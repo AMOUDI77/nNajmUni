@@ -1,0 +1,11 @@
+.env
+node_modules/
+client/node_modules/
+client/dist/
+server/data/
+*.db
+*.sqlite
+__pycache__/
+*.pyc
+.venv/
+venv/
