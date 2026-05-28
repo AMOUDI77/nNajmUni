@@ -1,16 +1,17 @@
 import type { University, Program, Institute } from './types';
 import { UNIVERSITIES, PROGRAMS } from './data';
+import { apiUrl } from './config';
 
 const BASE = '/api';
 
 async function get<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE}${path}`);
+  const res = await fetch(apiUrl(`${BASE}${path}`));
   if (!res.ok) throw new Error(`API error ${res.status}`);
   return res.json() as Promise<T>;
 }
 
 async function post<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(apiUrl(`${BASE}${path}`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),

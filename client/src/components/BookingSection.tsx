@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { UNIVERSITIES } from '../data';
 import Select from './Select';
 import { usePreferences } from '../i18n';
+import { apiUrl } from '../config';
 
 const COUNTRY_OPTIONS = [
   { value: '+60',  label: 'MY +60',  sub: 'Malaysia' },
@@ -74,7 +75,7 @@ export default function BookingSection() {
     e.preventDefault();
     setStatus('loading');
     try {
-      const res = await fetch(`${BASE}/reservations`, {
+      const res = await fetch(apiUrl(`${BASE}/reservations`), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: form.name.trim(), email: form.email.trim(),

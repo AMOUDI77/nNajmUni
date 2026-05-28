@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import Logo from '../components/Logo';
+import { apiUrl } from '../config';
 
 /* ─── design tokens ─────────────────────────────────────────────────────── */
 const T = {
@@ -27,7 +28,7 @@ function getStoredAdminKey() {
 async function apiFetch(path: string, opts: RequestInit = {}) {
   const incomingHeaders = (opts.headers ?? {}) as Record<string, string>;
   const adminKey = incomingHeaders['X-Admin-Key'] ?? getStoredAdminKey();
-  const url = path.startsWith('/api/') ? path : `${BASE}${path}`;
+  const url = apiUrl(path.startsWith('/api/') ? path : `${BASE}${path}`);
   const res = await fetch(url, {
     ...opts,
     headers: {

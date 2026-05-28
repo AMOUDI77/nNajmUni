@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { apiUrl } from '../config';
 
 const INPUT: React.CSSProperties = {
   width: '100%', padding: '11px 14px', borderRadius: 10,
@@ -30,7 +31,7 @@ export default function ConsultationFloat() {
     }
     setSending(true);
     try {
-      const res = await fetch('/api/reservations', {
+      const res = await fetch(apiUrl('/api/reservations'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: form.name, email: form.email, phone: form.phone, notes: form.notes }),

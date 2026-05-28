@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { apiUrl } from '../config';
 
 /* ── types ─────────────────────────────────────────────────────────────────── */
 interface Student {
@@ -46,7 +47,7 @@ function getAdminKey() {
 async function apiFetch(path: string, opts: RequestInit = {}) {
   const incomingHeaders = (opts.headers ?? {}) as Record<string, string>;
   const adminKey = incomingHeaders['X-Admin-Key'] ?? getAdminKey();
-  return fetch(path, {
+  return fetch(apiUrl(path), {
     ...opts,
     headers: {
       'Content-Type': 'application/json',

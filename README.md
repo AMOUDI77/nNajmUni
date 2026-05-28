@@ -50,7 +50,15 @@ Required production environment variables:
 
 - `ADMIN_KEY`
 - `ALLOWED_ORIGINS`
+- `VITE_API_URL` for the static frontend service, for example `https://api.najmuni.com`
 - `ANTHROPIC_API_KEY` if the AI chat should be enabled
 - `DB_PATH` if the database path differs from `data/najmuni.db`
+
+For the current two-service Render setup:
+
+- Static site custom domain: `www.najmuni.com`
+- API web service custom domain: `api.najmuni.com`
+- Backend `ALLOWED_ORIGINS`: `https://www.najmuni.com,https://najmuni.com`
+- Frontend `VITE_API_URL`: `https://api.najmuni.com`
 
 Do not commit `.env`, `node_modules`, `client/dist`, or local database files.
