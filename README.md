@@ -1,6 +1,15 @@
 # NajmUni
 
-NajmUni is a React/Vite frontend with a Flask API and SQLite database.
+NajmUni is a React/Vite frontend with a Flask API and SQLite database. It helps international students explore Malaysian universities, institutes, study fields, and submit consultation or reservation requests.
+
+## Current Stack
+
+- Frontend: React, TypeScript, Vite
+- Backend: Flask
+- Local database: SQLite
+- Production host: Render
+- Main website: `https://najmuni.com`
+- API domain: `https://api.najmuni.com`
 
 ## Local Setup
 
@@ -22,7 +31,7 @@ pip install -r server/requirements.txt
 copy .env.example .env
 ```
 
-Set `ADMIN_KEY` to a long private password before using `/admin` or `/students`.
+Set `ADMIN_KEY` and `STUDENT_KEY` to long private passwords before using `/admin` or `/students`.
 
 4. Run the app:
 
@@ -32,7 +41,17 @@ npm run dev
 
 The frontend runs on `http://localhost:5173` and proxies API calls to Flask on `http://localhost:5000`.
 
-## Production
+## Important Pages
+
+- `/` public website
+- `/universities` universities list
+- `/universities/:id` university details
+- `/institutes` institutes list
+- `/programs` study fields
+- `/admin` admin dashboard
+- `/students` student CRM
+
+## Production Build
 
 Build the frontend:
 
@@ -49,16 +68,60 @@ cd server && gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 60
 Required production environment variables:
 
 - `ADMIN_KEY`
+- `STUDENT_KEY`
 - `ALLOWED_ORIGINS`
-- `VITE_API_URL` for the static frontend service, for example `https://api.najmuni.com`
 - `ANTHROPIC_API_KEY` if the AI chat should be enabled
-- `DB_PATH` if the database path differs from `data/najmuni.db`
+- `DB_PATH` if using SQLite
+- `DATABASE_URL` after migrating to PostgreSQL
 
-For the current two-service Render setup:
+For production, `ALLOWED_ORIGINS` should include:
 
-- Static site custom domain: `www.najmuni.com`
-- API web service custom domain: `api.najmuni.com`
-- Backend `ALLOWED_ORIGINS`: `https://www.najmuni.com,https://najmuni.com`
-- Frontend `VITE_API_URL`: `https://api.najmuni.com`
+```text
+https://najmuni.com,https://www.najmuni.com
+```
 
-Do not commit `.env`, `node_modules`, `client/dist`, or local database files.
+## Render Notes
+
+The current Render service is on the Free plan. Free web services can spin down after inactivity, which may delay the first request by 50 seconds or more.
+
+SQLite on Render Free is not safe for important leads or reservations because the filesystem is not persistent. Data can disappear after restarts, redeploys, or instance changes.
+
+Short-term options:
+
+- Upgrade the backend service to Render Starter.
+- Add a Persistent Disk.
+- Set `DB_PATH=/var/data/najmuni.db`.
+
+Recommended long-term option:
+
+- Move from SQLite to PostgreSQL.
+- Add `DATABASE_URL` to Render.
+- Update the Flask database layer to use PostgreSQL.
+- Keep leads, reservations, students, universities, institutes, and programs in PostgreSQL.
+
+## Handoff Checklist
+
+Before giving the project to another developer:
+
+1. Push the latest code changes to GitHub.
+2. Do not commit `.env`.
+3. Do not commit local SQLite database files unless the data is safe to share.
+4. Share `.env.example`, not real secrets.
+5. Tell the developer that production currently needs persistent storage or PostgreSQL.
+6. Confirm Render build/start commands match the Flask backend, not the old Node backend.
+
+## Git Safety
+
+Do not commit:
+
+- `.env`
+- `node_modules`
+- `client/dist`
+- local database files in `data/*.db`
+- `.run-logs`
+
+These are already covered by `.gitignore`.
+
+## Next Planned Infrastructure Work
+
+The next important backend task is to replace SQLite with PostgreSQL for production reliability. Until then, use Render Starter + Persistent Disk if you need stable production data.

@@ -391,10 +391,6 @@ export default function UniversityDetail() {
             <p style={{ fontSize:15, color:'rgba(255,255,255,0.75)', lineHeight:1.75, maxWidth:600, marginBottom:28 }}>{uni.description}</p>
 
             <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
-              <a href={uni.website} target="_blank" rel="noreferrer"
-                style={{ padding:'13px 28px', borderRadius:50, background:'rgba(255,255,255,0.15)', backdropFilter:'blur(10px)', border:'1px solid rgba(255,255,255,0.25)', color:'#fff', fontSize:14, fontWeight:600, textDecoration:'none' }}>
-                {t('detail.official')}
-              </a>
               <button onClick={goToApplication} style={{ padding:'13px 28px', borderRadius:50, background:'#fff', border:'none', color:C.purpleDeep, fontSize:14, fontWeight:700, cursor:'pointer', boxShadow:'0 4px 20px rgba(0,0,0,0.15)' }}>
                 {t('detail.apply')}
               </button>

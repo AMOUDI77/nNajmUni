@@ -113,16 +113,6 @@ const InstituteCard = memo(function InstituteCard({ institute }: { institute: In
             <div style={{ fontSize: 11, color: C.textMuted, marginBottom: 2 }}>{t('institutes.tuition')}</div>
             <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{formatTuition(institute.tuition_min, institute.tuition_max)}</div>
           </div>
-          {institute.website && (
-            <a
-              href={institute.website}
-              target="_blank"
-              rel="noreferrer"
-              style={{ fontSize: 12, fontWeight: 700, color: '#4F6BFF', textDecoration: 'none', whiteSpace: 'nowrap' }}
-            >
-              {t('institutes.website')}
-            </a>
-          )}
         </div>
       </div>
     </article>
