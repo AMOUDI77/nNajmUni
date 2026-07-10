@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect } from 'react';
-import { Routes, Route, useLocation } from 'react-router-dom';
+import { Navigate, Routes, Route, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import WhatsAppFAB from './components/WhatsAppFAB';
@@ -39,7 +39,7 @@ function RouteScroller() {
 
 export default function App() {
   const { pathname } = useLocation();
-  const isAdmin = pathname === '/admin' || pathname === '/students';
+  const isAdmin = pathname === '/admin' || pathname === '/students' || pathname === '/student';
 
   return (
     <>
@@ -53,6 +53,7 @@ export default function App() {
           <Route path="/institutes"       element={<Institutes />} />
           <Route path="/programs"         element={<Programs />} />
           <Route path="/admin"            element={<Admin />} />
+          <Route path="/student"          element={<Navigate to="/students" replace />} />
           <Route path="/students"         element={<Students />} />
         </Routes>
       </Suspense>

@@ -1,5 +1,5 @@
 import type { University, Program, Institute } from './types';
-import { UNIVERSITIES, PROGRAMS } from './data';
+import { UNIVERSITIES, PROGRAMS, INSTITUTES } from './data';
 import { apiUrl } from './config';
 
 const BASE = '/api';
@@ -36,6 +36,21 @@ function filterUniversities(params?: Record<string, string>) {
   return list.slice(0, limit);
 }
 
+function filterInstitutes(params?: Record<string, string>) {
+  let list = [...INSTITUTES];
+  if (params?.type) list = list.filter(i => i.type === params.type);
+  if (params?.q) {
+    const q = params.q.toLowerCase();
+    list = list.filter(i =>
+      i.name.toLowerCase().includes(q) ||
+      i.abbr.toLowerCase().includes(q) ||
+      i.description.toLowerCase().includes(q)
+    );
+  }
+  list.sort((a, b) => a.name.localeCompare(b.name));
+  return list;
+}
+
 export const api = {
   universities: {
     list: async (params?: Record<string, string>) => {
@@ -43,7 +58,6 @@ export const api = {
         const qs = params ? '?' + new URLSearchParams(params).toString() : '';
         return await get<{ data: University[]; total: number }>(`/universities${qs}`);
       } catch (err) {
-        if (!import.meta.env.DEV) throw err;
         const data = filterUniversities(params);
         return { data, total: UNIVERSITIES.length };
       }
@@ -52,7 +66,6 @@ export const api = {
       try {
         return await get<University & { programs: Program[] }>(`/universities/${id}`);
       } catch (err) {
-        if (!import.meta.env.DEV) throw err;
         const uni = UNIVERSITIES.find(u => u.id === id);
         if (!uni) throw new Error('Not found');
         const programs = PROGRAMS.filter(p => p.university_id === id);
@@ -62,8 +75,13 @@ export const api = {
   },
   institutes: {
     list: async (params?: Record<string, string>) => {
-      const qs = params ? '?' + new URLSearchParams(params).toString() : '';
-      return await get<{ data: Institute[]; total: number }>(`/institutes${qs}`);
+      try {
+        const qs = params ? '?' + new URLSearchParams(params).toString() : '';
+        return await get<{ data: Institute[]; total: number }>(`/institutes${qs}`);
+      } catch (err) {
+        const data = filterInstitutes(params);
+        return { data, total: INSTITUTES.length };
+      }
     },
   },
   programs: {
@@ -72,7 +90,6 @@ export const api = {
         const qs = params ? '?' + new URLSearchParams(params).toString() : '';
         return await get<{ data: Program[]; fields: string[] }>(`/programs${qs}`);
       } catch (err) {
-        if (!import.meta.env.DEV) throw err;
         let data = [...PROGRAMS];
         if (params?.field) data = data.filter(p => p.field === params.field);
         if (params?.level) data = data.filter(p => p.level === params.level);
