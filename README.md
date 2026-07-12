@@ -71,6 +71,7 @@ Required production environment variables:
 - `STUDENT_KEY`
 - `ALLOWED_ORIGINS`
 - `ANTHROPIC_API_KEY` if the AI chat should be enabled
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `NOTIFY_EMAIL_TO` if email notifications should be enabled
 - `DB_PATH` if using SQLite
 - `DATABASE_URL` after migrating to PostgreSQL
 
@@ -98,6 +99,23 @@ Recommended long-term option:
 - Add `DATABASE_URL` to Render.
 - Update the Flask database layer to use PostgreSQL.
 - Keep leads, reservations, students, universities, institutes, and programs in PostgreSQL.
+
+## Email Notifications
+
+The backend can send an email whenever a visitor submits a lead or reservation form. Email notifications are optional: if SMTP variables are missing or email sending fails, the form still saves to the database.
+
+Set these variables on the backend Render service:
+
+```text
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_USER=your-smtp-user
+SMTP_PASS=your-smtp-password
+SMTP_FROM=NajmUni <no-reply@example.com>
+NOTIFY_EMAIL_TO=admin@example.com
+```
+
+`NOTIFY_EMAIL_TO` can contain more than one email, separated by commas.
 
 ## Handoff Checklist
 

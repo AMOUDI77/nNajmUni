@@ -1,4 +1,5 @@
-import hmac, sqlite3, os, re, time
+import hmac, sqlite3, os, re, time, smtplib
+from email.message import EmailMessage
 from functools import wraps
 from flask import Flask, jsonify, request, g, send_from_directory
 from flask_cors import CORS
@@ -86,6 +87,48 @@ def close_db(_):
     if db: db.close()
 
 def rows(cur): return [dict(r) for r in cur.fetchall()]
+
+
+# ── Notifications ─────────────────────────────────────────────────────────────
+
+def email_notifications_enabled():
+    return all([
+        os.environ.get('SMTP_HOST', '').strip(),
+        os.environ.get('SMTP_USER', '').strip(),
+        os.environ.get('SMTP_PASS', '').strip(),
+        os.environ.get('NOTIFY_EMAIL_TO', '').strip(),
+    ])
+
+def send_email_notification(subject, fields):
+    if not email_notifications_enabled():
+        return
+
+    host = os.environ.get('SMTP_HOST', '').strip()
+    port = int(os.environ.get('SMTP_PORT', '587'))
+    user = os.environ.get('SMTP_USER', '').strip()
+    password = os.environ.get('SMTP_PASS', '').strip()
+    sender = os.environ.get('SMTP_FROM', user).strip()
+    recipients = [
+        item.strip()
+        for item in os.environ.get('NOTIFY_EMAIL_TO', '').split(',')
+        if item.strip()
+    ]
+    if not recipients:
+        return
+
+    msg = EmailMessage()
+    msg['Subject'] = subject
+    msg['From'] = sender
+    msg['To'] = ', '.join(recipients)
+    msg.set_content('\n'.join(f'{label}: {value or "-"}' for label, value in fields))
+
+    try:
+        with smtplib.SMTP(host, port, timeout=10) as smtp:
+            smtp.starttls()
+            smtp.login(user, password)
+            smtp.send_message(msg)
+    except Exception as exc:
+        app.logger.warning('Email notification failed: %s', exc)
 
 
 # Lightweight in-memory throttling for public forms and access-key checks.
@@ -194,6 +237,12 @@ def create_lead():
         return jsonify(ok=True, existing=True)
     db.execute('INSERT INTO leads (email,name,source) VALUES (?,?,?)', [email, name or None, source])
     db.commit()
+    send_email_notification('New NajmUni lead', [
+        ('Type', 'Lead'),
+        ('Name', name),
+        ('Email', email),
+        ('Source', source),
+    ])
     return jsonify(ok=True, existing=False)
 
 @app.get('/api/leads/count')
@@ -705,6 +754,16 @@ def create_reservation():
          body.get('preferred_date', ''), body.get('notes', '')]
     )
     db.commit()
+    send_email_notification('New NajmUni reservation', [
+        ('Type', 'Reservation'),
+        ('Name', name),
+        ('Email', email),
+        ('Phone', phone),
+        ('University', body.get('university', '')),
+        ('Field', body.get('field', '')),
+        ('Preferred date', body.get('preferred_date', '')),
+        ('Notes', body.get('notes', '')),
+    ])
     return jsonify(ok=True)
 
 
