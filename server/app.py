@@ -227,20 +227,20 @@ def create_lead():
     limited = rate_limit('leads', limit=8, window=300)
     if limited: return limited
     body   = request.get_json(silent=True) or {}
-    email  = body.get('email', '').strip()
+    phone  = body.get('phone', '').strip()
     name   = body.get('name', '')
     source = body.get('source', 'landing')
-    if not email or not re.match(r'^[^\s@]+@[^\s@]+\.[^\s@]+$', email):
-        return jsonify(error='Valid email required'), 400
+    if not phone or not re.match(r'^\+?[0-9\s\-]{7,20}$', phone):
+        return jsonify(error='Valid phone number required'), 400
     db = get_db()
-    if db.execute('SELECT id FROM leads WHERE email=?', [email]).fetchone():
+    if db.execute('SELECT id FROM leads WHERE phone=?', [phone]).fetchone():
         return jsonify(ok=True, existing=True)
-    db.execute('INSERT INTO leads (email,name,source) VALUES (?,?,?)', [email, name or None, source])
+    db.execute('INSERT INTO leads (phone,name,source) VALUES (?,?,?)', [phone, name or None, source])
     db.commit()
     send_email_notification('New NajmUni lead', [
         ('Type', 'Lead'),
         ('Name', name),
-        ('Email', email),
+        ('Phone', phone),
         ('Source', source),
     ])
     return jsonify(ok=True, existing=False)
@@ -911,7 +911,7 @@ def init_db():
         );
         CREATE TABLE IF NOT EXISTS leads (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            email TEXT, name TEXT, source TEXT DEFAULT 'landing',
+            email TEXT, phone TEXT, name TEXT, source TEXT DEFAULT 'landing',
             status TEXT DEFAULT 'new',
             created_at TEXT DEFAULT (datetime('now'))
         );
@@ -951,11 +951,16 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_institutes_type  ON institutes(type);
     ''')
 
-    # migrate: add status column to leads if not present
+    # migrate: add status/phone columns to leads if not present
     cols = [r[1] for r in db.execute("PRAGMA table_info(leads)").fetchall()]
     if 'status' not in cols:
         db.execute("ALTER TABLE leads ADD COLUMN status TEXT DEFAULT 'new'")
         db.commit()
+    if 'phone' not in cols:
+        db.execute("ALTER TABLE leads ADD COLUMN phone TEXT")
+        db.commit()
+    db.execute("CREATE INDEX IF NOT EXISTS idx_leads_phone ON leads(phone)")
+    db.commit()
 
     # migrate: keep older university databases compatible with the admin editor
     uni_cols = [r[1] for r in db.execute("PRAGMA table_info(universities)").fetchall()]

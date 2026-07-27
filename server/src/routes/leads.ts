@@ -4,20 +4,20 @@ import { getDb, saveDb } from '../db/database';
 export const leadsRouter = Router();
 
 leadsRouter.post('/', async (req: Request, res: Response) => {
-  const { email, name, source = 'landing' } = req.body as { email?: string; name?: string; source?: string };
+  const { phone, name, source = 'landing' } = req.body as { phone?: string; name?: string; source?: string };
 
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return res.status(400).json({ error: 'Valid email required' });
+  if (!phone || !/^\+?[0-9\s-]{7,20}$/.test(phone)) {
+    return res.status(400).json({ error: 'Valid phone number required' });
   }
 
   try {
     const db = await getDb();
-    const existing = db.exec('SELECT id FROM leads WHERE email = ?', [email]);
+    const existing = db.exec('SELECT id FROM leads WHERE phone = ?', [phone]);
     if (existing.length && existing[0].values.length) {
       return res.json({ ok: true, existing: true });
     }
 
-    db.run('INSERT INTO leads (email, name, source) VALUES (?, ?, ?)', [email, name ?? null, source]);
+    db.run('INSERT INTO leads (phone, name, source) VALUES (?, ?, ?)', [phone, name ?? null, source]);
     saveDb();
     res.json({ ok: true, existing: false });
   } catch (err) {

@@ -47,7 +47,7 @@ async function apiFetch(path: string, opts: RequestInit = {}) {
 
 /* ─── types ──────────────────────────────────────────────────────────────── */
 interface Lead {
-  id: number; email: string; name: string | null;
+  id: number; phone: string; name: string | null;
   source: string; status: string; created_at: string;
 }
 interface UniRow {
@@ -320,7 +320,7 @@ function LeadsTab() {
         <div className="admin-table-card" style={{ background:T.card, borderRadius:16, border:`1px solid ${T.border}`, overflow:'hidden' }}>
           {/* table header */}
           <div className="admin-table-header" style={{ display:'grid', gridTemplateColumns:'1fr 1.6fr 90px 100px 110px 90px', gap:0, padding:'12px 20px', borderBottom:`1px solid ${T.border}`, background:T.bg }}>
-            {['Name','Email','Source','Status','Date','Actions'].map(h => (
+            {['Name','Phone','Source','Status','Date','Actions'].map(h => (
               <div key={h} style={{ fontSize:10, fontWeight:700, color:T.muted, letterSpacing:'1px', textTransform:'uppercase' }}>{h}</div>
             ))}
           </div>
@@ -329,7 +329,7 @@ function LeadsTab() {
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = T.bg; }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}>
               <div style={{ fontSize:13, fontWeight:600, color:T.text }}>{lead.name || '—'}</div>
-              <div style={{ fontSize:12, color:T.muted, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', paddingRight:8 }}>{lead.email}</div>
+              <div style={{ fontSize:12, color:T.muted, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', paddingRight:8 }}>{lead.phone}</div>
               <div style={{ fontSize:11, color:T.muted, textTransform:'capitalize' }}>{lead.source}</div>
               <div>
                 <span style={{ fontSize:10, fontWeight:700, color: STATUS_COLORS[lead.status] ?? T.muted, background:`${STATUS_COLORS[lead.status] ?? T.muted}14`, borderRadius:20, padding:'3px 9px', textTransform:'capitalize' }}>

@@ -87,9 +87,9 @@ export const api = {
     },
   },
   leads: {
-    submit: async (email: string, name?: string, source?: string) => {
+    submit: async (phone: string, name?: string, source?: string) => {
       try {
-        return await post<{ ok: boolean; existing: boolean }>('/leads', { email, name, source });
+        return await post<{ ok: boolean; existing: boolean }>('/leads', { phone, name, source });
       } catch (err) {
         if (!import.meta.env.DEV) throw err;
         return { ok: true, existing: false };

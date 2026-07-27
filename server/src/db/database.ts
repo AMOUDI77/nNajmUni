@@ -62,7 +62,7 @@ export async function initDb(): Promise<void> {
   db.run(`
     CREATE TABLE IF NOT EXISTS leads (
       id         INTEGER PRIMARY KEY AUTOINCREMENT,
-      email      TEXT NOT NULL,
+      phone      TEXT NOT NULL,
       name       TEXT,
       source     TEXT DEFAULT 'landing',
       created_at TEXT DEFAULT (datetime('now'))
