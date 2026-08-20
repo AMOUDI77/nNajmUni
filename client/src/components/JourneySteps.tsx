@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { usePreferences } from '../i18n';
 
-const WA = 'https://wa.me/601121266613?text=Hi%20NajmUni%2C%20I%27d%20like%20to%20book%20a%20free%20consultation';
+const WA = 'https://wa.me/601137327607?text=Hi%20NajmUni%2C%20I%27d%20like%20to%20book%20a%20free%20consultation';
 
 const STEPS = [
   {

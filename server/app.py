@@ -230,12 +230,13 @@ def create_lead():
     phone  = body.get('phone', '').strip()
     name   = body.get('name', '')
     source = body.get('source', 'landing')
-    if not phone or not re.match(r'^\+?[0-9\s\-]{7,20}$', phone):
+    normalized_phone = re.sub(r'[^\d+]', '', phone)
+    if not normalized_phone or not re.match(r'^\+?\d{7,15}$', normalized_phone):
         return jsonify(error='Valid phone number required'), 400
     db = get_db()
-    if db.execute('SELECT id FROM leads WHERE phone=?', [phone]).fetchone():
+    if db.execute('SELECT id FROM leads WHERE phone=?', [normalized_phone]).fetchone():
         return jsonify(ok=True, existing=True)
-    db.execute('INSERT INTO leads (phone,name,source) VALUES (?,?,?)', [phone, name or None, source])
+    db.execute('INSERT INTO leads (phone,name,source) VALUES (?,?,?)', [normalized_phone, name or None, source])
     db.commit()
     send_email_notification('New NajmUni lead', [
         ('Type', 'Lead'),

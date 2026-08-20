@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-const WA_LINK = 'https://wa.me/601121266613?text=Hi%20NajmUni%2C%20I%27d%20like%20to%20book%20a%20reservation';
+const WA_LINK = 'https://wa.me/601137327607?text=Hi%20NajmUni%2C%20I%27d%20like%20to%20book%20a%20reservation';
 
 export default function WhatsAppFAB() {
   const [hov, setHov] = useState(false);

@@ -47,7 +47,7 @@ async function apiFetch(path: string, opts: RequestInit = {}) {
 
 /* ─── types ──────────────────────────────────────────────────────────────── */
 interface Lead {
-  id: number; phone: string; name: string | null;
+  id: number; email: string | null; phone: string | null; name: string | null;
   source: string; status: string; created_at: string;
 }
 interface UniRow {
@@ -329,7 +329,7 @@ function LeadsTab() {
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = T.bg; }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}>
               <div style={{ fontSize:13, fontWeight:600, color:T.text }}>{lead.name || '—'}</div>
-              <div style={{ fontSize:12, color:T.muted, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', paddingRight:8 }}>{lead.phone}</div>
+              <div style={{ fontSize:12, color:T.muted, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', paddingRight:8 }}>{lead.phone || lead.email || '—'}</div>
               <div style={{ fontSize:11, color:T.muted, textTransform:'capitalize' }}>{lead.source}</div>
               <div>
                 <span style={{ fontSize:10, fontWeight:700, color: STATUS_COLORS[lead.status] ?? T.muted, background:`${STATUS_COLORS[lead.status] ?? T.muted}14`, borderRadius:20, padding:'3px 9px', textTransform:'capitalize' }}>

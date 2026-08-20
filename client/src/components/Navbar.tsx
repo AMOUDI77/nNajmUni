@@ -8,6 +8,7 @@ const links = [
   { key: 'nav.universities' as const, href: '/universities' },
   { key: 'nav.institutes' as const,    href: '/institutes'    },
   { key: 'nav.programs' as const,     href: '/programs'     },
+  { key: 'nav.studyPlan' as const,    href: '/study-plan'   },
   { key: 'nav.services' as const,     href: '/#services'    },
   { key: 'nav.visa' as const,         href: '/#faq'         },
   { key: 'nav.contact' as const,      href: '/#cta'         },
@@ -109,10 +110,10 @@ export default function Navbar() {
             <Logo height={38} tone={logoTone} />
           </Link>
 
-          <div className="nav-links" style={{ display: 'flex', gap: 24, flex: 1, justifyContent: 'center' }}>
+          <div className="nav-links" style={{ display: 'flex', gap: 'clamp(2px, 0.7vw, 12px)', flex: 1, justifyContent: 'center' }}>
             {links.map(({ key, href }) => (
               <a key={key} href={href} onClick={e => handleClick(e, href)}
-                style={{ fontSize: 14, fontWeight: 600, color: linkColor, textDecoration: 'none', whiteSpace: 'nowrap', transition: 'all 0.2s', padding: '10px 12px', borderRadius: 12 }}
+                style={{ fontSize: 14, fontWeight: 600, color: linkColor, textDecoration: 'none', whiteSpace: 'nowrap', transition: 'all 0.2s', padding: '10px 8px', borderRadius: 12 }}
                 onMouseEnter={e => { e.currentTarget.style.color = '#111B3D'; e.currentTarget.style.background = '#F4F4F5'; }}
                 onMouseLeave={e => { e.currentTarget.style.color = linkColor; e.currentTarget.style.background = 'transparent'; }}>
                 {t(key)}

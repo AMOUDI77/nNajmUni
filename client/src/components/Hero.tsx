@@ -129,6 +129,7 @@ export default function Hero() {
               <PhoneIcon />
               <input
                 type="tel"
+                inputMode="tel"
                 value={phone}
                 onChange={e => setPhone(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleSubmit()}
@@ -173,8 +174,22 @@ export default function Hero() {
               {t('hero.explore')}
               <ArrowIcon />
             </button>
-            <span style={{ fontSize: 14, fontWeight: 700 }}>{t('hero.trust')}</span>
+            <button
+              className="hero-secondary-btn"
+              type="button"
+              onClick={() => navigate('/study-plan')}
+              style={{
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                padding: '14px 24px', borderRadius: 14, border: '1px solid rgba(151,165,255,0.42)',
+                color: '#fff', background: 'rgba(79,107,255,0.18)', fontSize: 15, fontWeight: 800,
+                cursor: 'pointer', backdropFilter: 'blur(8px)',
+              }}
+            >
+              {t('hero.studyPlan')}
+              <ArrowIcon />
+            </button>
           </div>
+          <span style={{ fontSize: 13, fontWeight: 700, color: 'rgba(255,255,255,0.58)', marginTop: 16 }}>{t('hero.trust')}</span>
         </div>
       </div>
     </section>

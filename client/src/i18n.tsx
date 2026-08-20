@@ -6,6 +6,7 @@ const en = {
   'nav.universities': 'Universities',
   'nav.institutes': 'Institutes',
   'nav.programs': 'Programs',
+  'nav.studyPlan': 'Study Plan',
   'nav.services': 'Our Services',
   'nav.accommodation': 'Accommodation',
   'nav.visa': 'Visa Guide',
@@ -25,6 +26,7 @@ const en = {
   'hero.done': "We'll be in touch soon!",
   'hero.explore': 'Explore Universities',
   'hero.trust': 'Trusted by 12,400+ students',
+  'hero.studyPlan': 'Check Your Study Plan Free',
 
   'partners.badge': 'Our Partners',
   'partners.title': 'Top Universities in Malaysia',
@@ -249,6 +251,7 @@ const ar: Record<keyof typeof en, string> = {
   'nav.universities': 'الجامعات',
   'nav.institutes': 'المعاهد',
   'nav.programs': 'البرامج',
+  'nav.studyPlan': 'خطتك الدراسية',
   'nav.services': 'خدماتنا',
   'nav.accommodation': 'السكن',
   'nav.visa': 'دليل الفيزا',
@@ -268,6 +271,7 @@ const ar: Record<keyof typeof en, string> = {
   'hero.done': 'سنتواصل معك قريباً!',
   'hero.explore': 'استكشف الجامعات',
   'hero.trust': 'موثوق من أكثر من 12,400 طالب',
+  'hero.studyPlan': 'اعرف فرص قبولك مجانًا',
 
   'partners.badge': 'شركاؤنا',
   'partners.title': 'أفضل الجامعات في ماليزيا',

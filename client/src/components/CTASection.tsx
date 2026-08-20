@@ -10,7 +10,7 @@ export default function CTASection() {
   const [loading, setLoading] = useState(false);
 
   const submit = async () => {
-    if (!phone) return;
+    if (!phone.trim()) return;
     setLoading(true);
     try { await api.leads.submit(phone, undefined, 'cta'); } catch { /* offline ok */ }
     setSubmitted(true);
@@ -44,7 +44,7 @@ export default function CTASection() {
             <div style={{ display: 'flex', justifyContent: 'center' }}>
               <div className="cta-email-form" style={{ display: 'flex', background: 'rgba(255,255,255,0.95)', borderRadius: 50, padding: '6px 6px 6px 24px', gap: 8, alignItems: 'center', boxShadow: '0 8px 30px rgba(0,0,0,0.2)', maxWidth: 440, width: '100%' }}>
                 <input
-                  type="tel"
+                  type="tel" inputMode="tel"
                   value={phone} onChange={e => setPhone(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && submit()}
                   placeholder={t('cta.phone')}

@@ -11,6 +11,7 @@ const Institutes      = lazy(() => import('./pages/Institutes'));
 const Programs        = lazy(() => import('./pages/Programs'));
 const Admin           = lazy(() => import('./pages/Admin'));
 const Students        = lazy(() => import('./pages/Students'));
+const StudyPlan       = lazy(() => import('./features/study-plan/StudyPlanFeature'));
 
 function PageLoader() {
   return (
@@ -52,6 +53,7 @@ export default function App() {
           <Route path="/universities/:id" element={<UniversityDetail />} />
           <Route path="/institutes"       element={<Institutes />} />
           <Route path="/programs"         element={<Programs />} />
+          <Route path="/study-plan/*"     element={<StudyPlan />} />
           <Route path="/admin"            element={<Admin />} />
           <Route path="/student"          element={<Navigate to="/students" replace />} />
           <Route path="/students"         element={<Students />} />
