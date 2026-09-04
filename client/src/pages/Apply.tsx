@@ -1,6 +1,5 @@
 import { FormEvent, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { api } from '../api';
 import './Apply.css';
 
 const initial = {
@@ -21,22 +20,15 @@ export default function Apply() {
   const source = useMemo(() => params.get('source') || 'contact_form', [params]);
   const set = (key: keyof typeof form) => (value: string) => setForm(old => ({ ...old, [key]: value }));
 
-  async function submit(event: FormEvent) {
+  function submit(event: FormEvent) {
     event.preventDefault();
-    setState('loading');
-    try {
-      await api.leads.qualify({ ...form, source });
-      setState('done');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } catch {
-      setState('error');
-    }
+    window.location.assign('https://www.instagram.com/najm.uni/');
   }
 
   if (state === 'done') return <main className="apply-page" dir="rtl"><section className="apply-success">
-    <span>✓</span><h1>وصلنا طلبك بنجاح</h1>
-    <p>فريق نجم بيراجع بياناتك ويتواصل معك إذا كانت حالتك مناسبة للخطوة القادمة.</p>
-    <small>سنراجع بياناتك أولًا، ثم يتواصل معك الفريق عند مناسبة حالتك للخطوة القادمة.</small>
+    <span>✓</span><h1>تواصل معنا على إنستغرام</h1>
+    <p>أرسل لنا رسالتك مباشرة عبر حساب نجم على إنستغرام.</p>
+    <a className="apply-primary" href="https://www.instagram.com/najm.uni/">فتح إنستغرام</a>
   </section></main>;
 
   return <main className="apply-page" dir="rtl">

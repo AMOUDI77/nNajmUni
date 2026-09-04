@@ -34,8 +34,7 @@ export default function Hero() {
   const { t } = usePreferences();
 
   const handleSubmit = () => {
-    if (!phone.trim()) return;
-    navigate(`/apply?source=hero&phone=${encodeURIComponent(phone.trim())}`);
+    window.location.assign('https://www.instagram.com/najm.uni/');
   };
 
   return (
@@ -117,16 +116,7 @@ export default function Hero() {
               background: '#fff',
               boxShadow: '0 22px 55px rgba(0,0,0,0.22)',
             }}>
-              <PhoneIcon />
-              <input
-                type="tel"
-                inputMode="tel"
-                value={phone}
-                onChange={e => setPhone(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-                placeholder={t('hero.phone')}
-                style={{ border: 'none', outline: 'none', fontSize: 16, color: C.text, background: 'transparent', flex: 1, minWidth: 0 }}
-              />
+              <span style={{ fontSize: 16, color: C.text, flex: 1, fontWeight: 700 }}>راسلنا على إنستغرام</span>
               <button onClick={handleSubmit} style={{
                 background: gradientMid,
                 color: '#fff',

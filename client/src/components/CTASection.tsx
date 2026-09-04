@@ -9,8 +9,7 @@ export default function CTASection() {
   const [phone, setPhone] = useState('');
 
   const submit = () => {
-    if (!phone.trim()) return;
-    navigate(`/apply?source=cta&phone=${encodeURIComponent(phone.trim())}`);
+    window.location.assign('https://www.instagram.com/najm.uni/');
   };
 
   return (
@@ -34,13 +33,7 @@ export default function CTASection() {
           </p>
             <div style={{ display: 'flex', justifyContent: 'center' }}>
               <div className="cta-email-form" style={{ display: 'flex', background: 'rgba(255,255,255,0.95)', borderRadius: 50, padding: '6px 6px 6px 24px', gap: 8, alignItems: 'center', boxShadow: '0 8px 30px rgba(0,0,0,0.2)', maxWidth: 440, width: '100%' }}>
-                <input
-                  type="tel" inputMode="tel"
-                  value={phone} onChange={e => setPhone(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && submit()}
-                  placeholder={t('cta.phone')}
-                  style={{ border: 'none', outline: 'none', fontSize: 15, color: C.purpleDeep, background: 'transparent', flex: 1 }}
-                />
+                <span style={{ fontSize:15, color:C.purpleDeep, flex:1, textAlign:'start', fontWeight:700 }}>تواصل معنا عبر إنستغرام</span>
                 <button onClick={submit} style={{
                   background: `linear-gradient(135deg, ${C.purpleMid}, ${C.purpleDeep})`,
                   color: '#fff', border: 'none', borderRadius: 50,

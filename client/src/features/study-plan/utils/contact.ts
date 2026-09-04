@@ -1,21 +1,7 @@
 import type { StudyPlanContactContext, StudyPlanProfile } from '../types';
-import { budgetOptions, labelFor, programOptions, qualificationOptions, startOptions } from '../data/options';
 import { trackStudyPlanEvent } from './analytics';
 
-export function openStudyPlanWhatsApp(profile: StudyPlanProfile, context: StudyPlanContactContext) {
-  const introductions: Record<string, string> = {
-    review_study_plan: 'السلام عليكم، سويت خطتي الدراسية في NajmUni وأبي أراجع الخيارات اللي ظهرت لي مع نجم.',
-    request_free_guide: 'السلام عليكم، سويت Study Plan في NajmUni وأبي ملف التجهيز للدراسة في ماليزيا.',
-    verify_university: 'السلام عليكم، ظهر لي هذا الخيار في Study Plan وأبي أتأكد من تفاصيل القبول.',
-    verify_intake: 'السلام عليكم، سويت Study Plan وأبي أتأكد من أقرب Intake مناسب لي.',
-    review_english_options: 'السلام عليكم، سويت Study Plan وأبي أراجع خيارات اللغة المناسبة لي.',
-  };
-  const message = [introductions[context.intent] ?? 'السلام عليكم، سويت Study Plan في NajmUni وأبي أراجع خطتي مع نجم.', '',
-    `الشهادة: ${labelFor(qualificationOptions, profile.qualification)}`, `المعدل: ${profile.grade ?? 'غير محدد'}%`,
-    `التخصص: ${labelFor(programOptions, profile.program)}`, `الميزانية: ${labelFor(budgetOptions, profile.budget)}`,
-    `البداية: ${labelFor(startOptions, profile.preferredStart)}`, context.universityId ? `رقم خيار الجامعة: ${context.universityId}` : '',
-    ].filter(Boolean).join('\n');
+export function openStudyPlanWhatsApp(_profile: StudyPlanProfile, context: StudyPlanContactContext) {
   trackStudyPlanEvent('study_plan_contact_form_opened', context);
-  const params = new URLSearchParams({ source: `study_plan_${context.source}`, specialization: labelFor(programOptions, profile.program), preferred_start: labelFor(startOptions, profile.preferredStart), note: message });
-  window.location.assign(`/apply?${params.toString()}`);
+  window.location.assign('https://www.instagram.com/najm.uni/');
 }

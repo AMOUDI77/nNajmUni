@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { usePreferences } from '../i18n';
 
-const WA = '/apply?source=journey_steps';
+const WA = 'https://www.instagram.com/najm.uni/';
 
 const STEPS = [
   {

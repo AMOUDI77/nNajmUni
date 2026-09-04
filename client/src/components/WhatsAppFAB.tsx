@@ -5,8 +5,10 @@ export default function WhatsAppFAB() {
 
   return (
     <a
-      href="/apply?source=floating_button"
-      aria-label="اطلب تواصل من مستشار"
+      href="https://www.instagram.com/najm.uni/"
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="تواصل معنا على إنستغرام"
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
       style={{
@@ -36,7 +38,7 @@ export default function WhatsAppFAB() {
       <svg viewBox="0 0 24 24" width={24} height={24} fill="none" stroke="white" strokeWidth="2" style={{ flexShrink: 0 }}>
         <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/>
       </svg>
-      {hov && <span>اطلب تواصل من مستشار</span>}
+      {hov && <span>تواصل عبر إنستغرام</span>}
     </a>
   );
 }
