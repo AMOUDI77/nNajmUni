@@ -49,6 +49,10 @@ async function apiFetch(path: string, opts: RequestInit = {}) {
 interface Lead {
   id: number; email: string | null; phone: string | null; name: string | null;
   source: string; status: string; created_at: string;
+  nationality: string; study_level: string; specialization: string; qualification: string;
+  grade: string; english_level: string; preferred_start: string; passport_ready: string;
+  financial_readiness: string; score: number; priority: 'high'|'medium'|'low'; category: string;
+  preferred_university: string;
 }
 interface UniRow {
   id: number; abbr: string; name: string; type: string;
@@ -272,6 +276,9 @@ function LeadsTab() {
   const [leads, setLeads]   = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter]   = useState<'all'|'new'|'handled'>('all');
+  const [priority, setPriority] = useState<'all'|'high'|'medium'|'low'>('all');
+  const [level, setLevel] = useState('all');
+  const [category, setCategory] = useState('all');
 
   const load = useCallback(() => {
     setLoading(true);
@@ -291,7 +298,12 @@ function LeadsTab() {
     setLeads(prev => prev.filter(l => l.id !== id));
   }
 
-  const visible = leads.filter(l => filter==='all' || l.status===filter);
+  const visible = leads.filter(l =>
+    (filter==='all' || l.status===filter) &&
+    (priority==='all' || l.priority===priority) &&
+    (level==='all' || l.study_level===level) &&
+    (category==='all' || l.category===category)
+  );
 
   const STATUS_COLORS: Record<string, string> = { new: T.green, handled: T.muted };
 
@@ -309,6 +321,15 @@ function LeadsTab() {
               {f === 'all' ? `All (${leads.length})` : f === 'new' ? `New (${leads.filter(l=>l.status==='new').length})` : `Handled (${leads.filter(l=>l.status==='handled').length})`}
             </button>
           ))}
+          <select value={priority} onChange={e=>setPriority(e.target.value as typeof priority)} style={{padding:'8px 12px',borderRadius:50,border:`1px solid ${T.border}`,background:T.card,color:T.text}}>
+            <option value="all">All priorities</option><option value="high">High priority</option><option value="medium">Medium priority</option><option value="low">Low priority</option>
+          </select>
+          <select value={level} onChange={e=>setLevel(e.target.value)} style={{padding:'8px 12px',borderRadius:50,border:`1px solid ${T.border}`,background:T.card,color:T.text}}>
+            <option value="all">All levels</option>{[...new Set(leads.map(l=>l.study_level).filter(Boolean))].map(x=><option key={x}>{x}</option>)}
+          </select>
+          <select value={category} onChange={e=>setCategory(e.target.value)} style={{padding:'8px 12px',borderRadius:50,border:`1px solid ${T.border}`,background:T.card,color:T.text}}>
+            <option value="all">All readiness</option><option value="ready">Ready</option><option value="follow_up">Follow up</option><option value="inquiry">Inquiry</option>
+          </select>
         </div>
       </div>
 
@@ -320,7 +341,7 @@ function LeadsTab() {
         <div className="admin-table-card" style={{ background:T.card, borderRadius:16, border:`1px solid ${T.border}`, overflow:'hidden' }}>
           {/* table header */}
           <div className="admin-table-header" style={{ display:'grid', gridTemplateColumns:'1fr 1.6fr 90px 100px 110px 90px', gap:0, padding:'12px 20px', borderBottom:`1px solid ${T.border}`, background:T.bg }}>
-            {['Name','Phone','Source','Status','Date','Actions'].map(h => (
+            {['Student / Priority','Phone / Readiness','Study Request','Status','Date','Actions'].map(h => (
               <div key={h} style={{ fontSize:10, fontWeight:700, color:T.muted, letterSpacing:'1px', textTransform:'uppercase' }}>{h}</div>
             ))}
           </div>
@@ -328,9 +349,9 @@ function LeadsTab() {
             <div className="admin-table-row admin-lead-row" key={lead.id} style={{ display:'grid', gridTemplateColumns:'1fr 1.6fr 90px 100px 110px 90px', gap:0, padding:'14px 20px', borderBottom: i < visible.length-1 ? `1px solid ${T.border}` : 'none', alignItems:'center', transition:'background 0.15s' }}
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = T.bg; }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}>
-              <div style={{ fontSize:13, fontWeight:600, color:T.text }}>{lead.name || '—'}</div>
-              <div style={{ fontSize:12, color:T.muted, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', paddingRight:8 }}>{lead.phone || lead.email || '—'}</div>
-              <div style={{ fontSize:11, color:T.muted, textTransform:'capitalize' }}>{lead.source}</div>
+              <div><div style={{fontSize:13,fontWeight:700,color:T.text}}>{lead.name || '—'}</div><small style={{color:lead.priority==='high'?T.green:lead.priority==='medium'?'#B7791F':T.muted,fontWeight:800}}>{lead.priority || 'low'} · {lead.score || 0} · {lead.nationality || '—'}</small></div>
+              <div><div style={{fontSize:12,color:T.text}}>{lead.phone || lead.email || '—'}</div><small style={{color:T.muted}}>{lead.financial_readiness || '—'}</small></div>
+              <div><div style={{fontSize:11,fontWeight:700,color:T.text}}>{lead.study_level || '—'} · {lead.specialization || '—'}</div><small style={{color:T.muted}}>{lead.preferred_university || 'بدون جامعة محددة'} · {lead.preferred_start || '—'} · جواز: {lead.passport_ready || '—'}</small></div>
               <div>
                 <span style={{ fontSize:10, fontWeight:700, color: STATUS_COLORS[lead.status] ?? T.muted, background:`${STATUS_COLORS[lead.status] ?? T.muted}14`, borderRadius:20, padding:'3px 9px', textTransform:'capitalize' }}>
                   {lead.status}

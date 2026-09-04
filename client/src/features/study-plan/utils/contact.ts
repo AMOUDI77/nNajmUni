@@ -2,7 +2,6 @@ import type { StudyPlanContactContext, StudyPlanProfile } from '../types';
 import { budgetOptions, labelFor, programOptions, qualificationOptions, startOptions } from '../data/options';
 import { trackStudyPlanEvent } from './analytics';
 
-const WHATSAPP_NUMBER = '601137327607';
 export function openStudyPlanWhatsApp(profile: StudyPlanProfile, context: StudyPlanContactContext) {
   const introductions: Record<string, string> = {
     review_study_plan: 'السلام عليكم، سويت خطتي الدراسية في NajmUni وأبي أراجع الخيارات اللي ظهرت لي مع نجم.',
@@ -16,6 +15,7 @@ export function openStudyPlanWhatsApp(profile: StudyPlanProfile, context: StudyP
     `التخصص: ${labelFor(programOptions, profile.program)}`, `الميزانية: ${labelFor(budgetOptions, profile.budget)}`,
     `البداية: ${labelFor(startOptions, profile.preferredStart)}`, context.universityId ? `رقم خيار الجامعة: ${context.universityId}` : '',
     ].filter(Boolean).join('\n');
-  trackStudyPlanEvent('study_plan_whatsapp_opened', context);
-  window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+  trackStudyPlanEvent('study_plan_contact_form_opened', context);
+  const params = new URLSearchParams({ source: `study_plan_${context.source}`, specialization: labelFor(programOptions, profile.program), preferred_start: labelFor(startOptions, profile.preferredStart), note: message });
+  window.location.assign(`/apply?${params.toString()}`);
 }

@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../api';
 import { C, gradientMid } from '../styles/theme';
 import { usePreferences } from '../i18n';
 
@@ -31,14 +30,12 @@ function ArrowIcon() {
 
 export default function Hero() {
   const [phone, setPhone] = useState('');
-  const [submitted, setSubmitted] = useState(false);
   const navigate = useNavigate();
   const { t } = usePreferences();
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (!phone.trim()) return;
-    try { await api.leads.submit(phone, undefined, 'hero'); } catch { /* offline ok */ }
-    setSubmitted(true);
+    navigate(`/apply?source=hero&phone=${encodeURIComponent(phone.trim())}`);
   };
 
   return (
@@ -109,12 +106,6 @@ export default function Hero() {
             {t('hero.copy')}
           </p>
 
-          {submitted ? (
-            <div className="hero-cta" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 18, padding: '16px 28px', color: '#fff', fontSize: 15, fontWeight: 800 }}>
-              <CheckIcon />
-              {t('hero.done')}
-            </div>
-          ) : (
             <div className="hero-cta hero-cta-row" style={{
               display: 'flex',
               alignItems: 'center',
@@ -149,7 +140,6 @@ export default function Hero() {
                 whiteSpace: 'nowrap',
               }}>{t('hero.started')}</button>
             </div>
-          )}
 
           <div className="hero-actions" style={{ display: 'flex', alignItems: 'center', gap: 22, marginTop: 24, color: 'rgba(255,255,255,0.58)' }}>
             <button

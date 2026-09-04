@@ -1,20 +1,16 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { C, gradientCTA } from '../styles/theme';
-import { api } from '../api';
 import { usePreferences } from '../i18n';
 
 export default function CTASection() {
   const { t } = usePreferences();
+  const navigate = useNavigate();
   const [phone, setPhone] = useState('');
-  const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading] = useState(false);
 
-  const submit = async () => {
+  const submit = () => {
     if (!phone.trim()) return;
-    setLoading(true);
-    try { await api.leads.submit(phone, undefined, 'cta'); } catch { /* offline ok */ }
-    setSubmitted(true);
-    setLoading(false);
+    navigate(`/apply?source=cta&phone=${encodeURIComponent(phone.trim())}`);
   };
 
   return (
@@ -36,11 +32,6 @@ export default function CTASection() {
           <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.7)', marginBottom: 36, lineHeight: 1.7 }}>
             {t('cta.copy')}
           </p>
-          {submitted ? (
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: 'rgba(255,255,255,0.15)', borderRadius: 50, padding: '14px 28px', color: '#fff', fontSize: 15, fontWeight: 600 }}>
-              {t('hero.done')}
-            </div>
-          ) : (
             <div style={{ display: 'flex', justifyContent: 'center' }}>
               <div className="cta-email-form" style={{ display: 'flex', background: 'rgba(255,255,255,0.95)', borderRadius: 50, padding: '6px 6px 6px 24px', gap: 8, alignItems: 'center', boxShadow: '0 8px 30px rgba(0,0,0,0.2)', maxWidth: 440, width: '100%' }}>
                 <input
@@ -50,15 +41,13 @@ export default function CTASection() {
                   placeholder={t('cta.phone')}
                   style={{ border: 'none', outline: 'none', fontSize: 15, color: C.purpleDeep, background: 'transparent', flex: 1 }}
                 />
-                <button onClick={submit} disabled={loading} style={{
+                <button onClick={submit} style={{
                   background: `linear-gradient(135deg, ${C.purpleMid}, ${C.purpleDeep})`,
                   color: '#fff', border: 'none', borderRadius: 50,
                   padding: '12px 24px', fontSize: 15, fontWeight: 600, cursor: 'pointer',
-                  opacity: loading ? 0.7 : 1,
-                }}>{loading ? '...' : t('cta.apply')}</button>
+                }}>{t('cta.apply')}</button>
               </div>
             </div>
-          )}
         </div>
       </div>
     </section>

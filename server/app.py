@@ -228,23 +228,53 @@ def create_lead():
     if limited: return limited
     body   = request.get_json(silent=True) or {}
     phone  = body.get('phone', '').strip()
-    name   = body.get('name', '')
-    source = body.get('source', 'landing')
+    name   = str(body.get('name', '')).strip()[:120]
+    source = str(body.get('source', 'landing')).strip()[:80]
     normalized_phone = re.sub(r'[^\d+]', '', phone)
     if not normalized_phone or not re.match(r'^\+?\d{7,15}$', normalized_phone):
         return jsonify(error='Valid phone number required'), 400
+    fields = {
+        key: str(body.get(key, '')).strip()[:160]
+        for key in ('nationality', 'study_level', 'specialization', 'qualification',
+                    'grade', 'english_level', 'preferred_start', 'passport_ready',
+                    'financial_readiness', 'preferred_university')
+    }
+    score = 10
+    score += {'في أقرب وقت ممكن': 25, 'خلال 3–6 أشهر': 18, 'خلال 6–12 شهرًا': 8}.get(fields['preferred_start'], 0)
+    score += {'نعم': 20, 'قيد التجهيز': 10}.get(fields['passport_ready'], 0)
+    score += {'جاهز ماليًا لبدء الإجراءات': 30, 'أحتاج معرفة التكاليف أولًا': 12}.get(fields['financial_readiness'], 0)
+    score += min(15, sum(bool(fields[key]) for key in ('nationality', 'study_level', 'specialization', 'qualification', 'english_level')) * 3)
+    priority = 'high' if score >= 70 else 'medium' if score >= 40 else 'low'
+    category = 'ready' if priority == 'high' else 'follow_up' if priority == 'medium' else 'inquiry'
     db = get_db()
-    if db.execute('SELECT id FROM leads WHERE phone=?', [normalized_phone]).fetchone():
-        return jsonify(ok=True, existing=True)
-    db.execute('INSERT INTO leads (phone,name,source) VALUES (?,?,?)', [normalized_phone, name or None, source])
+    existing = db.execute('SELECT id FROM leads WHERE phone=?', [normalized_phone]).fetchone()
+    values = [name or None, source, *fields.values(), score, priority, category]
+    if existing:
+        db.execute('''UPDATE leads SET name=?, source=?, nationality=?, study_level=?, specialization=?,
+                   qualification=?, grade=?, english_level=?, preferred_start=?, passport_ready=?,
+                   financial_readiness=?, preferred_university=?, score=?, priority=?, category=?, status='new', created_at=datetime('now')
+                   WHERE id=?''', [*values, existing[0]])
+    else:
+        db.execute('''INSERT INTO leads
+                   (phone,name,source,nationality,study_level,specialization,qualification,grade,
+                    english_level,preferred_start,passport_ready,financial_readiness,preferred_university,score,priority,category)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
+                   [normalized_phone, name or None, source, *fields.values(), score, priority, category])
     db.commit()
     send_email_notification('New NajmUni lead', [
         ('Type', 'Lead'),
         ('Name', name),
         ('Phone', phone),
         ('Source', source),
+        ('Priority', priority),
+        ('Score', score),
+        ('Study level', fields['study_level']),
+        ('Specialization', fields['specialization']),
+        ('Preferred university', fields['preferred_university']),
+        ('Start', fields['preferred_start']),
+        ('Financial readiness', fields['financial_readiness']),
     ])
-    return jsonify(ok=True, existing=False)
+    return jsonify(ok=True, existing=bool(existing), score=score, priority=priority)
 
 @app.get('/api/leads/count')
 def leads_count():
@@ -914,6 +944,12 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             email TEXT, phone TEXT, name TEXT, source TEXT DEFAULT 'landing',
             status TEXT DEFAULT 'new',
+            nationality TEXT DEFAULT '', study_level TEXT DEFAULT '',
+            specialization TEXT DEFAULT '', qualification TEXT DEFAULT '', grade TEXT DEFAULT '',
+            english_level TEXT DEFAULT '', preferred_start TEXT DEFAULT '', passport_ready TEXT DEFAULT '',
+            financial_readiness TEXT DEFAULT '', score INTEGER DEFAULT 0,
+            preferred_university TEXT DEFAULT '',
+            priority TEXT DEFAULT 'low', category TEXT DEFAULT 'inquiry',
             created_at TEXT DEFAULT (datetime('now'))
         );
         CREATE TABLE IF NOT EXISTS reservations (
@@ -960,6 +996,24 @@ def init_db():
     if 'phone' not in cols:
         db.execute("ALTER TABLE leads ADD COLUMN phone TEXT")
         db.commit()
+    lead_migrations = {
+        'nationality': "ALTER TABLE leads ADD COLUMN nationality TEXT DEFAULT ''",
+        'study_level': "ALTER TABLE leads ADD COLUMN study_level TEXT DEFAULT ''",
+        'specialization': "ALTER TABLE leads ADD COLUMN specialization TEXT DEFAULT ''",
+        'qualification': "ALTER TABLE leads ADD COLUMN qualification TEXT DEFAULT ''",
+        'grade': "ALTER TABLE leads ADD COLUMN grade TEXT DEFAULT ''",
+        'english_level': "ALTER TABLE leads ADD COLUMN english_level TEXT DEFAULT ''",
+        'preferred_start': "ALTER TABLE leads ADD COLUMN preferred_start TEXT DEFAULT ''",
+        'passport_ready': "ALTER TABLE leads ADD COLUMN passport_ready TEXT DEFAULT ''",
+        'financial_readiness': "ALTER TABLE leads ADD COLUMN financial_readiness TEXT DEFAULT ''",
+        'preferred_university': "ALTER TABLE leads ADD COLUMN preferred_university TEXT DEFAULT ''",
+        'score': "ALTER TABLE leads ADD COLUMN score INTEGER DEFAULT 0",
+        'priority': "ALTER TABLE leads ADD COLUMN priority TEXT DEFAULT 'low'",
+        'category': "ALTER TABLE leads ADD COLUMN category TEXT DEFAULT 'inquiry'",
+    }
+    for col, stmt in lead_migrations.items():
+        if col not in cols:
+            db.execute(stmt)
     db.execute("CREATE INDEX IF NOT EXISTS idx_leads_phone ON leads(phone)")
     db.commit()
 

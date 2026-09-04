@@ -112,5 +112,7 @@ export const api = {
         return { ok: true, existing: false };
       }
     },
+    qualify: (lead: Record<string, string>) =>
+      post<{ ok: boolean; existing: boolean; score: number; priority: string }>('/leads', lead),
   },
 };
