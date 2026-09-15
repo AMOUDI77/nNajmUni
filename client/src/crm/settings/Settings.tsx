@@ -4,6 +4,8 @@ import { write } from "../api";
 import { date, ErrorBanner, Skeleton, useData } from "../components";
 import { useCRM } from "../context";
 import type { Staff, Label } from "../types";
+import Knowledge from "../pages/Knowledge";
+import SavedReplies from "./SavedReplies";
 type Integration = {
   configured: boolean;
   mode: string;
@@ -56,7 +58,16 @@ export default function Settings() {
       setBusy(false);
     }
   }
-  const tabs = ["integrations", "team", "labels", "ai", "general"];
+  if (section === "knowledge") return <Knowledge />;
+  const tabs = [
+    "integrations",
+    "team",
+    "saved-replies",
+    "labels",
+    "knowledge",
+    "ai",
+    "general",
+  ];
   return (
     <main className="crm-page">
       <header className="crm-page-header">
@@ -69,7 +80,11 @@ export default function Settings() {
       <nav className="crm-settings-tabs" aria-label="Settings sections">
         {tabs.map((t) => (
           <NavLink key={t} to={"/crm/settings/" + t}>
-            {t === "ai" ? "AI Copilot" : t[0].toUpperCase() + t.slice(1)}
+            {t === "ai"
+              ? "AI Copilot"
+              : t === "saved-replies"
+                ? "Saved replies"
+                : t[0].toUpperCase() + t.slice(1)}
           </NavLink>
         ))}
       </nav>
@@ -85,6 +100,7 @@ export default function Settings() {
         )}
         {section === "team" && <Team tick={tick} admin={admin} act={act} />}
         {section === "labels" && <Labels tick={tick} admin={admin} act={act} />}
+        {section === "saved-replies" && <SavedReplies />}
         {section === "ai" && <AISettings tick={tick} admin={admin} act={act} />}
         {section === "general" && (
           <General tick={tick} admin={admin} act={act} />

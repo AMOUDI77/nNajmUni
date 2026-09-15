@@ -2,7 +2,7 @@
 
 CRM automations are linear, versioned rule definitions stored in PostgreSQL. Owners/admins create drafts, edit, activate, pause and duplicate them. Active sessions snapshot their step list, so editing a definition affects new runs without changing a student’s current questions.
 
-Supported triggers are DM, comment and postback. Keywords support contains/exact matching, case folding, Arabic diacritic/tatweel removal and conservative alef normalization. Comment triggers may target one media ID. One matching rule is selected by priority and ID. The default repeat cooldown is one hour per conversation/rule.
+Supported triggers are DM, comment and postback. DM rules can run for every matching keyword, only for the first message in a conversation, or for the first message after a configured inactivity period. This prevents a welcome flow from repeating on every student message. Keywords support contains/exact matching, case folding, Arabic diacritic/tatweel removal and conservative alef normalization. Comment triggers may target one media ID. One matching rule is selected by priority and ID. The default repeat cooldown is one hour per conversation/rule.
 
 Actions: send message, ask question, wait for reply, branch to a later step, add/remove label, create a linked lead, fill an empty study field, assign a counselor, human handoff and stop. `LINK_OR_UPDATE_LEAD` currently uses the safe create/link-if-missing behavior; it does not overwrite an existing lead. Reply collection also fills empty contact fields only. Branches are forward-only; definitions and execution are bounded to 30 steps.
 

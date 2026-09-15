@@ -1,4 +1,5 @@
 from pathlib import Path
+
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import create_engine, inspect, text
@@ -26,8 +27,12 @@ def test_crm_upgrade_preserves_legacy_records_and_downgrade(tmp_path, monkeypatc
         )
         assert (
             conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-            == "0002_crm_v1"
+            == "0003_saved_replies"
         )
+    assert "saved_replies" in inspect(engine).get_table_names()
+    command.downgrade(cfg, "0002_crm_v1")
+    assert "saved_replies" not in inspect(engine).get_table_names()
+    assert "staff_users" in inspect(engine).get_table_names()
     command.downgrade(cfg, "0001_baseline")
     assert "staff_users" not in inspect(engine).get_table_names()
     with engine.connect() as conn:
@@ -39,6 +44,7 @@ def test_worker_command_starts_without_migration(tmp_path):
     import os
     import subprocess
     import sys
+
     from crm.schema_v1 import metadata
 
     path = tmp_path / "worker.db"

@@ -103,14 +103,14 @@
 .crm-shell {
   height: 100dvh;
   display: grid;
-  grid-template-columns: 64px minmax(0, 1fr);
+  grid-template-columns: 152px minmax(0, 1fr);
   overflow: hidden;
 }
 .crm-rail {
   background: #fff;
   border-inline-end: 1px solid var(--line);
   display: flex;
-  align-items: center;
+  align-items: stretch;
   flex-direction: column;
   padding: 17px 7px;
   gap: 12px;
@@ -122,17 +122,20 @@
   display: flex;
   align-items: center;
   margin-bottom: 24px;
+  align-self: center;
 }
 .crm-brand img {
   width: 100%;
   object-fit: contain;
 }
 .crm-rail > a:not(.crm-brand) {
-  width: 43px;
+  width: 100%;
   height: 43px;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
+  gap: 10px;
+  padding-inline: 10px;
   color: #858da0;
   border-radius: 9px;
   position: relative;
@@ -149,24 +152,17 @@
   height: 22px;
 }
 .crm-rail > a > span {
-  position: absolute;
-  inset-inline-start: 52px;
-  background: var(--ink);
-  color: white;
-  padding: 5px 9px;
-  border-radius: 5px;
+  position: static;
+  color: inherit;
+  font-size: 11px;
+  font-weight: 600;
   white-space: nowrap;
-  opacity: 0;
-  pointer-events: none;
-}
-.crm-rail > a:hover > span,
-.crm-rail > a:focus-visible > span {
-  opacity: 1;
 }
 .crm-rail-bottom {
   margin-top: auto;
   display: grid;
   gap: 12px;
+  align-self: center;
 }
 .crm-rail-bottom button {
   width: 35px;
@@ -492,11 +488,52 @@
   margin-top: 8px;
 }
 .crm-composer {
+  position: relative;
   margin: 12px 20px 20px;
   background: white;
   border: 1px solid #dce1ec;
   border-radius: 11px;
   box-shadow: 0 3px 15px #14224704;
+}
+.crm-saved-reply-menu {
+  position: absolute;
+  inset-inline: 12px;
+  bottom: calc(100% - 43px);
+  z-index: 20;
+  max-height: 310px;
+  overflow-y: auto;
+  padding: 6px;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 12px 36px #17213b24;
+}
+.crm-saved-reply-menu button {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 3px 10px;
+  text-align: start;
+  border: 0;
+  background: transparent;
+  padding: 10px;
+}
+.crm-saved-reply-menu button.selected,
+.crm-saved-reply-menu button:hover {
+  background: var(--accent-soft);
+}
+.crm-saved-reply-menu strong {
+  color: var(--accent);
+}
+.crm-saved-reply-menu span {
+  font-weight: 600;
+}
+.crm-saved-reply-menu small {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .crm-composer-tabs {
   display: flex;
@@ -560,6 +597,43 @@
   border-inline-start: 1px solid var(--line);
   overflow-y: auto;
   flex-shrink: 0;
+}
+.crm-contact-summary {
+  padding: 22px;
+}
+.crm-contact-summary > header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.crm-contact-summary > header div {
+  display: grid;
+  gap: 2px;
+}
+.crm-contact-summary > header small,
+.crm-contact-summary dt {
+  color: var(--muted);
+  font-size: 10px;
+}
+.crm-contact-summary dl {
+  display: grid;
+  gap: 12px;
+}
+.crm-contact-summary dl > div {
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 9px;
+}
+.crm-contact-summary dd {
+  margin: 3px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+.crm-open-profile {
+  display: block;
+  margin-top: 20px;
+  text-align: center;
+  text-decoration: none;
 }
 .crm-contact-panel {
   padding: 22px;
@@ -1021,6 +1095,8 @@
   .crm-rail > a:not(.crm-brand) {
     width: 43px;
     height: 40px;
+    justify-content: center;
+    padding: 0;
   }
   .crm-rail > a > span {
     display: none;

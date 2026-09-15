@@ -58,5 +58,5 @@ def test_postgres_alembic_upgrade_preserves_legacy_rows(crm_client, monkeypatch)
         )
         assert (
             conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-            == "0002_crm_v1"
+            == "0003_saved_replies"
         )

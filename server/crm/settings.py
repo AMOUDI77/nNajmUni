@@ -1,7 +1,8 @@
 import os
+import re
 
-from flask import Blueprint, g, jsonify
-from sqlalchemy import func, select, update
+from flask import Blueprint, g, jsonify, request
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from werkzeug.exceptions import BadRequest, NotFound
@@ -15,8 +16,10 @@ from .schema_v1 import (
     settings,
     webhook_events,
 )
+from .schema_v2 import saved_replies
 
 api = Blueprint("crm_settings", __name__, url_prefix="/api/crm")
+SHORTCUT = re.compile(r"^[a-z0-9_-]{1,32}$")
 
 
 @api.get("/settings")
@@ -109,6 +112,122 @@ def update_knowledge(aid):
         )
         audit(conn, g.staff["id"], "knowledge.updated", "knowledge", aid)
     return jsonify(ok=True)
+
+
+def saved_reply_values(data):
+    shortcut = string(data, "shortcut", 32, True).lower().lstrip("/")
+    if not SHORTCUT.fullmatch(shortcut):
+        raise BadRequest("Shortcut may contain lowercase letters, numbers, - and _")
+    status = data.get("status", "ACTIVE")
+    if status not in ("ACTIVE", "ARCHIVED"):
+        raise BadRequest("Invalid saved reply status")
+    return {
+        "title": string(data, "title", 100, True),
+        "shortcut": shortcut,
+        "content": string(data, "content", 4000, True),
+        "status": status,
+        "updated_by": g.staff["id"],
+        "updated_at": now(),
+    }
+
+
+@api.get("/saved-replies")
+@require_staff()
+def list_saved_replies():
+    query = request.args.get("q", "").strip()[:100]
+    include_archived = request.args.get("include_archived") == "1"
+    statement = select(saved_replies)
+    if not include_archived:
+        statement = statement.where(saved_replies.c.status == "ACTIVE")
+    if query:
+        pattern = f"%{query.lstrip('/')}%"
+        statement = statement.where(
+            or_(
+                saved_replies.c.shortcut.ilike(pattern),
+                saved_replies.c.title.ilike(pattern),
+                saved_replies.c.content.ilike(pattern),
+            )
+        )
+    with engine().connect() as conn:
+        rows = (
+            conn.execute(statement.order_by(saved_replies.c.shortcut).limit(100))
+            .mappings()
+            .all()
+        )
+    return output(rows)
+
+
+@api.post("/saved-replies")
+@require_staff("OWNER", "ADMIN", "COUNSELOR")
+def create_saved_reply():
+    values = saved_reply_values(body())
+    values["created_by"] = g.staff["id"]
+    with engine().begin() as conn:
+        rid = conn.execute(
+            saved_replies.insert().values(**values)
+        ).inserted_primary_key[0]
+        audit(conn, g.staff["id"], "saved_reply.created", "saved_reply", rid)
+    return output({"id": rid}, 201)
+
+
+@api.patch("/saved-replies/<int:rid>")
+@require_staff("OWNER", "ADMIN", "COUNSELOR")
+def update_saved_reply(rid):
+    with engine().begin() as conn:
+        existing = (
+            conn.execute(select(saved_replies).where(saved_replies.c.id == rid))
+            .mappings()
+            .first()
+        )
+        if not existing:
+            raise NotFound("Saved reply not found")
+        values = saved_reply_values({**existing, **body()})
+        conn.execute(
+            update(saved_replies).where(saved_replies.c.id == rid).values(**values)
+        )
+        audit(conn, g.staff["id"], "saved_reply.updated", "saved_reply", rid)
+    return jsonify(ok=True)
+
+
+@api.post("/saved-replies/<int:rid>/duplicate")
+@require_staff("OWNER", "ADMIN", "COUNSELOR")
+def duplicate_saved_reply(rid):
+    with engine().begin() as conn:
+        existing = (
+            conn.execute(select(saved_replies).where(saved_replies.c.id == rid))
+            .mappings()
+            .first()
+        )
+        if not existing:
+            raise NotFound("Saved reply not found")
+        base = (existing["shortcut"] + "-copy")[:27]
+        shortcut = base
+        suffix = 2
+        while conn.execute(
+            select(saved_replies.c.id).where(saved_replies.c.shortcut == shortcut)
+        ).first():
+            shortcut = f"{base}-{suffix}"[:32]
+            suffix += 1
+        new_id = conn.execute(
+            saved_replies.insert().values(
+                title=f"{existing['title']} copy"[:100],
+                shortcut=shortcut,
+                content=existing["content"],
+                status="ACTIVE",
+                created_by=g.staff["id"],
+                updated_by=g.staff["id"],
+                updated_at=now(),
+            )
+        ).inserted_primary_key[0]
+        audit(
+            conn,
+            g.staff["id"],
+            "saved_reply.duplicated",
+            "saved_reply",
+            new_id,
+            source_id=rid,
+        )
+    return output({"id": new_id}, 201)
 
 
 @api.get("/operations")

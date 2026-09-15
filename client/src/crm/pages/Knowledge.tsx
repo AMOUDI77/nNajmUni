@@ -2,6 +2,7 @@ import { useState } from "react";
 import { write } from "../api";
 import { date, Empty, ErrorBanner, Skeleton, useData } from "../components";
 import { useCRM } from "../context";
+import { Link } from "react-router-dom";
 type Article = {
   id: number;
   title: string;
@@ -61,6 +62,7 @@ export default function Knowledge() {
             + New article
           </button>
         )}
+        <Link to="/crm/settings">Back to settings</Link>
       </header>
       <ErrorBanner message={error || loadError} />
       {editing ? (

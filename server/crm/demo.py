@@ -20,6 +20,7 @@ from .schema_v1 import (
     staff_users,
     touchpoints,
 )
+from .schema_v2 import saved_replies
 
 
 def require_local(engine):
@@ -70,6 +71,35 @@ def seed_demo(engine, password):
                 ("Visa", "#8c67b5"),
             ]
         ]
+        conn.execute(
+            saved_replies.insert(),
+            [
+                {
+                    "title": "Welcome",
+                    "shortcut": "welcome",
+                    "content": "Welcome {{first_name}}! How can we help with your study plans?",
+                    "created_by": uid,
+                    "updated_by": uid,
+                    "updated_at": now(),
+                },
+                {
+                    "title": "Visa process",
+                    "shortcut": "visa",
+                    "content": "Hi {{first_name}}, we can guide you through the Malaysian student visa process. Which intake are you targeting?",
+                    "created_by": uid,
+                    "updated_by": uid,
+                    "updated_at": now(),
+                },
+                {
+                    "title": "Documents required",
+                    "shortcut": "docs",
+                    "content": "For {{program}}, we usually begin with your passport, academic certificates and transcripts. We will confirm the exact list before application.",
+                    "created_by": uid,
+                    "updated_by": uid,
+                    "updated_at": now(),
+                },
+            ],
+        )
         source = conn.execute(
             campaigns.insert().values(
                 account_id=account,

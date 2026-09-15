@@ -18,6 +18,7 @@ from .schema_v1 import (
     conversations,
     flow_sessions,
     labels,
+    messages,
     rules,
     runs,
     staff_users,
@@ -59,15 +60,29 @@ def validate(data):
         "POSTBACK",
     ):
         raise BadRequest("Select a supported trigger")
+    frequency = trigger.get("frequency", "every_match")
+    if frequency not in ("every_match", "first_message", "after_inactivity"):
+        raise BadRequest("Select a supported DM trigger frequency")
+    if trigger["kind"] != "DM" and frequency != "every_match":
+        raise BadRequest("Message frequency options are available for Instagram DMs")
     keywords = trigger.get("keywords", [])
     if (
         not isinstance(keywords, list)
-        or not 1 <= len(keywords) <= 20
+        or len(keywords) > 20
+        or (frequency == "every_match" and not keywords)
         or any(
             not isinstance(k, str) or not 1 <= len(k.strip()) <= 80 for k in keywords
         )
     ):
-        raise BadRequest("Provide 1–20 keywords, each up to 80 characters")
+        raise BadRequest("Provide up to 20 keywords, each up to 80 characters")
+    if frequency == "after_inactivity":
+        hours = trigger.get("inactivity_hours", 24)
+        if (
+            not isinstance(hours, int)
+            or isinstance(hours, bool)
+            or not 1 <= hours <= 720
+        ):
+            raise BadRequest("Inactivity must be between 1 and 720 hours")
     if trigger.get("match", "contains") not in ("contains", "equals"):
         raise BadRequest("Invalid keyword matching mode")
     if trigger.get("media_id") and (
@@ -212,10 +227,20 @@ def edit_rule(rid):
     return jsonify(ok=True)
 
 
-def matches(trigger, event):
+def matches(trigger, event, inbound_count=None, previous_inbound_at=None):
     if trigger["kind"] != event["kind"] or (
         trigger.get("media_id") and trigger["media_id"] != event.get("media_id")
     ):
+        return None
+    frequency = trigger.get("frequency", "every_match")
+    if frequency == "first_message":
+        return "first_message" if inbound_count == 1 else None
+    if frequency == "after_inactivity":
+        hours = trigger.get("inactivity_hours", 24)
+        if previous_inbound_at is None or event[
+            "timestamp"
+        ] - previous_inbound_at >= timedelta(hours=hours):
+            return "after_inactivity"
         return None
     text = normalize_keyword(event["text"])
     return next(
@@ -305,12 +330,38 @@ def handle_event(conn, vid, event, key):
             )
         rule = None
         keyword = None
+        inbound_count = None
+        previous_inbound_at = None
+        if event["kind"] == "DM":
+            inbound_count = conn.execute(
+                select(func.count())
+                .select_from(messages)
+                .where(
+                    messages.c.conversation_id == vid,
+                    messages.c.direction == "INBOUND",
+                )
+            ).scalar_one()
+            previous_inbound_at = conn.execute(
+                select(
+                    func.max(
+                        func.coalesce(
+                            messages.c.provider_timestamp, messages.c.created_at
+                        )
+                    )
+                ).where(
+                    messages.c.conversation_id == vid,
+                    messages.c.direction == "INBOUND",
+                    messages.c.provider_message_id != event["id"],
+                )
+            ).scalar_one()
         for candidate in conn.execute(
             select(rules)
             .where(rules.c.status == "ACTIVE")
             .order_by(rules.c.priority.desc(), rules.c.id)
         ).mappings():
-            keyword = matches(candidate["trigger"], event)
+            keyword = matches(
+                candidate["trigger"], event, inbound_count, previous_inbound_at
+            )
             if not keyword:
                 continue
             recent = conn.execute(

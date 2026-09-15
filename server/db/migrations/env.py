@@ -2,7 +2,7 @@ import os
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 from db.engine import database_url
-from crm.schema_v1 import metadata
+from crm.schema_v2 import metadata
 
 config = context.config
 default_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'data', 'najmuni.db'))

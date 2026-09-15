@@ -64,12 +64,14 @@ export type Contact = {
   phone?: string;
   degree_level?: string;
   program_interests?: string;
+  university_interests?: string;
   target_intake?: string;
   budget_amount?: number;
   budget_currency?: string;
   english_status?: string;
   preferred_language?: string;
   main_concerns?: string;
+  identities?: { id: number; username?: string }[];
   labels?: Label[];
   notes?: Note[];
   memory?: Memory[];
@@ -80,6 +82,14 @@ export type Contact = {
     occurred_at: string;
   }[];
   conversations?: Conversation[];
+};
+export type SavedReply = {
+  id: number;
+  title: string;
+  shortcut: string;
+  content: string;
+  status: "ACTIVE" | "ARCHIVED";
+  updated_at?: string;
 };
 export type Page<T> = {
   items: T[];

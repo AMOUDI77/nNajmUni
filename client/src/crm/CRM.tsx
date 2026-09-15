@@ -12,7 +12,6 @@ import Inbox from "./inbox/Inbox";
 import Contacts from "./contacts/Contacts";
 import Automations from "./automations/Automations";
 import Analytics from "./pages/Analytics";
-import Knowledge from "./pages/Knowledge";
 import Settings from "./settings/Settings";
 import "./crm.css";
 import "./crm-pages.css";
@@ -99,10 +98,9 @@ function Shell() {
     return <Navigate to="/crm/inbox" replace />;
   const nav = [
     ["inbox", "Inbox", "المحادثات"],
-    ["contacts", "Contacts", "جهات الاتصال"],
     ["automations", "Automations", "الأتمتة"],
+    ["contacts", "CRM", "إدارة الطلاب"],
     ["analytics", "Analytics", "التحليلات"],
-    ["knowledge", "Knowledge", "المعرفة"],
     ["settings", "Settings", "الإعدادات"],
   ];
   return (
@@ -146,7 +144,10 @@ function Shell() {
           <Route path="automations" element={<Automations />} />
           <Route path="automations/:automationId" element={<Automations />} />
           <Route path="analytics" element={<Analytics />} />
-          <Route path="knowledge" element={<Knowledge />} />
+          <Route
+            path="knowledge"
+            element={<Navigate to="/crm/settings/knowledge" replace />}
+          />
           <Route path="settings" element={<Settings />} />
           <Route path="settings/:section" element={<Settings />} />
           <Route path="*" element={<Navigate to="/crm/inbox" replace />} />

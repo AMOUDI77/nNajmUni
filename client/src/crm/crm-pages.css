@@ -47,6 +47,75 @@
   padding: 0;
   min-width: 0;
 }
+.crm-section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 20px;
+}
+.crm-segments {
+  display: flex;
+  gap: 7px;
+  margin-bottom: 18px;
+}
+.crm-segments button.active {
+  color: white;
+  background: var(--ink);
+  border-color: var(--ink);
+}
+.crm-saved-replies-page > input {
+  width: min(520px, 100%);
+  margin: 18px 0;
+}
+.crm-saved-reply-editor {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 18px;
+  margin-bottom: 20px;
+  display: grid;
+  gap: 14px;
+}
+.crm-saved-reply-editor footer,
+.crm-row-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.crm-shortcut-input {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding-inline-start: 10px;
+}
+.crm-shortcut-input input {
+  border: 0;
+}
+.crm-saved-reply-list {
+  display: grid;
+  gap: 10px;
+}
+.crm-saved-reply-list article {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: white;
+}
+.crm-saved-reply-list article.archived {
+  opacity: 0.65;
+}
+.crm-saved-reply-list code {
+  margin-inline: 10px;
+  color: var(--accent);
+}
+.crm-saved-reply-list p {
+  margin-top: 8px;
+  color: var(--muted);
+  white-space: pre-wrap;
+}
 .crm-form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));

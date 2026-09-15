@@ -65,6 +65,16 @@ function mockApi(override?: (path: string, init?: RequestInit) => unknown) {
         };
       else if (path === "/contacts/1") data = contact;
       else if (path === "/team") data = [user];
+      else if (path.startsWith("/saved-replies"))
+        data = [
+          {
+            id: 1,
+            title: "Welcome",
+            shortcut: "welcome",
+            content: "Hello {{first_name}}, welcome to NajmUni.",
+            status: "ACTIVE",
+          },
+        ];
       else if (
         path === "/labels" ||
         path.includes("/suggestions") ||
@@ -138,6 +148,18 @@ describe("CRM workflows", () => {
     expect((composer as HTMLTextAreaElement).value).toBe(
       "A reply that must not be lost",
     );
+  });
+  it("inserts a saved reply without sending it", async () => {
+    show("/crm/inbox/1");
+    const composer = await screen.findByLabelText("Reply message");
+    await userEvent.type(composer, "/wel");
+    await userEvent.click(await screen.findByText("Welcome"));
+    expect((composer as HTMLTextAreaElement).value).toContain("welcome to NajmUni");
+    expect(
+      vi.mocked(fetch).mock.calls.some(([url, init]) =>
+        String(url).endsWith("/conversations/1/messages") && init?.method === "POST",
+      ),
+    ).toBe(false);
   });
   it("applies server-side inbox filters", async () => {
     show();

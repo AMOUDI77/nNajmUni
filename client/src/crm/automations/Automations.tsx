@@ -21,6 +21,8 @@ type Rule = {
     keywords: string[];
     match: string;
     media_id?: string;
+    frequency?: "every_match" | "first_message" | "after_inactivity";
+    inactivity_hours?: number;
   };
   steps: Step[];
   executions?: number;
@@ -71,7 +73,8 @@ export default function Automations() {
   const navigate = useNavigate();
   const { user } = useCRM();
   const [tick, setTick] = useState(0),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    [channel, setChannel] = useState<"ALL" | "COMMENT" | "DM">("ALL");
   const canEdit = user?.role === "OWNER" || user?.role === "ADMIN";
   const {
     data: rules,
@@ -102,6 +105,9 @@ export default function Automations() {
       setError((e as Error).message);
     }
   }
+  const visibleRules = (rules || []).filter(
+    (rule) => channel === "ALL" || rule.trigger.kind === channel,
+  );
   return (
     <main className="crm-page">
       <header className="crm-page-header">
@@ -120,9 +126,24 @@ export default function Automations() {
         )}
       </header>
       <ErrorBanner message={error || loadError} />
+      <div className="crm-segments" aria-label="Automation channel">
+        {[
+          ["ALL", "All"],
+          ["COMMENT", "Instagram comments"],
+          ["DM", "Instagram DMs"],
+        ].map(([value, label]) => (
+          <button
+            key={value}
+            className={channel === value ? "active" : ""}
+            onClick={() => setChannel(value as typeof channel)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
       {loading ? (
         <Skeleton />
-      ) : rules?.length ? (
+      ) : visibleRules.length ? (
         <div className="crm-table-scroll">
           <table className="crm-table">
             <thead>
@@ -136,7 +157,7 @@ export default function Automations() {
               </tr>
             </thead>
             <tbody>
-              {rules.map((r) => (
+              {visibleRules.map((r) => (
                 <tr key={r.id}>
                   <td>
                     <Link to={"/crm/automations/" + r.id}>{r.name}</Link>
@@ -150,10 +171,10 @@ export default function Automations() {
                         "crm-tag " + (r.status === "ACTIVE" ? "success" : "")
                       }
                     >
-                      {r.status}
+                      {r.status === "ACTIVE" ? "LIVE" : "PAUSED"}
                     </span>
                   </td>
-                  <td>{r.executions || 0}</td>
+                  <td>{r.executions || 0} triggered</td>
                   <td>{date(r.last_run)}</td>
                   <td>
                     {canEdit && (
@@ -274,7 +295,14 @@ function Builder({ id, canEdit }: { id: string; canEdit: boolean }) {
                   onChange={(e) =>
                     setRule({
                       ...rule,
-                      trigger: { ...rule.trigger, kind: e.target.value },
+                      trigger: {
+                        ...rule.trigger,
+                        kind: e.target.value,
+                        frequency:
+                          e.target.value === "DM"
+                            ? rule.trigger.frequency || "every_match"
+                            : "every_match",
+                      },
                     })
                   }
                 >
@@ -283,34 +311,90 @@ function Builder({ id, canEdit }: { id: string; canEdit: boolean }) {
                   <option value="POSTBACK">Chooses an option</option>
                 </select>
               </label>
+              {(rule.trigger.kind !== "DM" ||
+                (rule.trigger.frequency || "every_match") ===
+                  "every_match") && (
+                <label>
+                  Match
+                  <select
+                    value={rule.trigger.match}
+                    onChange={(e) =>
+                      setRule({
+                        ...rule,
+                        trigger: { ...rule.trigger, match: e.target.value },
+                      })
+                    }
+                  >
+                    <option value="contains">Contains a keyword</option>
+                    <option value="equals">Exactly matches</option>
+                  </select>
+                </label>
+              )}
+            </div>
+            {rule.trigger.kind === "DM" && (
               <label>
-                Match
+                Send this automation
                 <select
-                  value={rule.trigger.match}
+                  value={rule.trigger.frequency || "every_match"}
                   onChange={(e) =>
                     setRule({
                       ...rule,
-                      trigger: { ...rule.trigger, match: e.target.value },
+                      trigger: {
+                        ...rule.trigger,
+                        frequency: e.target
+                          .value as Rule["trigger"]["frequency"],
+                      },
                     })
                   }
                 >
-                  <option value="contains">Contains a keyword</option>
-                  <option value="equals">Exactly matches</option>
+                  <option value="every_match">
+                    Every matching keyword message
+                  </option>
+                  <option value="first_message">
+                    First message in the conversation
+                  </option>
+                  <option value="after_inactivity">
+                    First message after inactivity
+                  </option>
                 </select>
               </label>
-            </div>
-            <label>
-              Keywords{" "}
-              <small>
-                Separate with commas. Arabic and English are supported.
-              </small>
-              <input
-                dir="auto"
-                placeholder="ماليزيا, Malaysia"
-                value={keywords}
-                onChange={(e) => setKeywords(e.target.value)}
-              />
-            </label>
+            )}
+            {(rule.trigger.kind !== "DM" ||
+              (rule.trigger.frequency || "every_match") === "every_match") && (
+              <label>
+                Keywords{" "}
+                <small>
+                  Separate with commas. Arabic and English are supported.
+                </small>
+                <input
+                  dir="auto"
+                  placeholder="ماليزيا, Malaysia"
+                  value={keywords}
+                  onChange={(e) => setKeywords(e.target.value)}
+                />
+              </label>
+            )}
+            {rule.trigger.kind === "DM" &&
+              rule.trigger.frequency === "after_inactivity" && (
+                <label>
+                  Inactivity period (hours)
+                  <input
+                    type="number"
+                    min={1}
+                    max={720}
+                    value={rule.trigger.inactivity_hours || 24}
+                    onChange={(e) =>
+                      setRule({
+                        ...rule,
+                        trigger: {
+                          ...rule.trigger,
+                          inactivity_hours: Number(e.target.value),
+                        },
+                      })
+                    }
+                  />
+                </label>
+              )}
             {rule.trigger.kind === "COMMENT" && (
               <label>
                 Post / reel media ID{" "}

@@ -12,7 +12,6 @@ import {
   useDebounce,
 } from "../components";
 import { useCRM } from "../context";
-import ContactPanel from "../contacts/ContactPanel";
 import type {
   Conversation,
   Contact,
@@ -20,6 +19,7 @@ import type {
   Message,
   Page,
   Staff,
+  SavedReply,
 } from "../types";
 
 export default function Inbox() {
@@ -246,17 +246,22 @@ function Thread({
     tick,
   );
   const { data: team } = useData<Staff[]>("/team");
+  const { data: savedReplies } = useData<SavedReply[]>("/saved-replies");
   const [details, setDetails] = useState(false),
     [failure, setFailure] = useState(""),
     [noteMode, setNoteMode] = useState(false),
-    [busy, setBusy] = useState(false);
+    [busy, setBusy] = useState(false),
+    [aiOpen, setAiOpen] = useState(false),
+    [caret, setCaret] = useState(0),
+    [replyIndex, setReplyIndex] = useState(0);
   const draftKey = `crm-draft:${user?.id}:${id}`;
   const [draft, setDraft] = useState(
     () => sessionStorage.getItem(draftKey) || "",
   );
   const [older, setOlder] = useState<Message[]>([]),
     [before, setBefore] = useState<number | null>(null);
-  const requestId = useRef(crypto.randomUUID()),
+  const composer = useRef<HTMLTextAreaElement>(null),
+    requestId = useRef(crypto.randomUUID()),
     lastSentText = useRef("");
   useEffect(() => {
     sessionStorage.setItem(draftKey, draft);
@@ -317,6 +322,41 @@ function Thread({
     } catch (e) {
       setFailure((e as Error).message);
     }
+  }
+  const command = !noteMode
+    ? draft.slice(0, caret).match(/(?:^|\s)\/([a-z0-9_-]*)$/i)
+    : null;
+  const replyQuery = command?.[1]?.toLocaleLowerCase() || "";
+  const replyMatches = command
+    ? (savedReplies || [])
+        .filter((reply) =>
+          [reply.shortcut, reply.title].some((value) =>
+            value.toLocaleLowerCase().includes(replyQuery),
+          ),
+        )
+        .slice(0, 8)
+    : [];
+  function chooseReply(reply: SavedReply) {
+    if (!contact || !command) return;
+    const start = draft.slice(0, caret).lastIndexOf("/");
+    const variables: Record<string, string | undefined> = {
+      first_name: contact.display_name.trim().split(/\s+/)[0],
+      university: contact.university_interests,
+      program: contact.program_interests,
+    };
+    const content = reply.content.replace(
+      /{{(first_name|university|program)}}/g,
+      (token, key: string) => variables[key] || token,
+    );
+    const next = draft.slice(0, start) + content + draft.slice(caret);
+    const nextCaret = start + content.length;
+    setDraft(next);
+    setCaret(nextCaret);
+    setReplyIndex(0);
+    requestAnimationFrame(() => {
+      composer.current?.focus();
+      composer.current?.setSelectionRange(nextCaret, nextCaret);
+    });
   }
   if (!conversation)
     return (
@@ -485,6 +525,14 @@ function Thread({
               >
                 {ar ? "رد" : "Reply"}
               </button>
+              {!noteMode && (
+                <button
+                  className={aiOpen ? "active" : ""}
+                  onClick={() => setAiOpen((value) => !value)}
+                >
+                  ✦ AI
+                </button>
+              )}
               <button
                 className={noteMode ? "active" : ""}
                 onClick={() => setNoteMode(true)}
@@ -502,7 +550,45 @@ function Thread({
                 {conversation.send_blocked_reason}
               </p>
             )}
+            {!noteMode && aiOpen && (
+              <Copilot
+                id={id}
+                tick={tick}
+                refresh={refresh}
+                onUse={(text) => {
+                  setDraft(text);
+                  setCaret(text.length);
+                  setAiOpen(false);
+                }}
+              />
+            )}
+            {!!replyMatches.length && (
+              <div
+                className="crm-saved-reply-menu"
+                role="listbox"
+                aria-label="Saved replies"
+              >
+                {replyMatches.map((reply, index) => (
+                  <button
+                    key={reply.id}
+                    type="button"
+                    role="option"
+                    aria-selected={index === replyIndex}
+                    className={index === replyIndex ? "selected" : ""}
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                      chooseReply(reply);
+                    }}
+                  >
+                    <strong>/{reply.shortcut}</strong>
+                    <span>{reply.title}</span>
+                    <small dir="auto">{reply.content}</small>
+                  </button>
+                ))}
+              </div>
+            )}
             <textarea
+              ref={composer}
               aria-label={noteMode ? "Private note" : "Reply message"}
               placeholder={
                 noteMode
@@ -513,8 +599,35 @@ function Thread({
               }
               dir="auto"
               value={draft}
-              onChange={(e) => setDraft(e.target.value)}
+              onChange={(e) => {
+                setDraft(e.target.value);
+                setCaret(e.target.selectionStart);
+                setReplyIndex(0);
+              }}
+              onClick={(e) => setCaret(e.currentTarget.selectionStart)}
+              onKeyUp={(e) => setCaret(e.currentTarget.selectionStart)}
               onKeyDown={(e) => {
+                if (replyMatches.length && e.key === "ArrowDown") {
+                  e.preventDefault();
+                  setReplyIndex((value) => (value + 1) % replyMatches.length);
+                  return;
+                }
+                if (replyMatches.length && e.key === "ArrowUp") {
+                  e.preventDefault();
+                  setReplyIndex(
+                    (value) =>
+                      (value - 1 + replyMatches.length) % replyMatches.length,
+                  );
+                  return;
+                }
+                if (
+                  replyMatches.length &&
+                  (e.key === "Enter" || e.key === "Tab")
+                ) {
+                  e.preventDefault();
+                  chooseReply(replyMatches[replyIndex]);
+                  return;
+                }
                 if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
                   e.preventDefault();
                   void submit();
@@ -546,24 +659,62 @@ function Thread({
         <button className="crm-drawer-close" onClick={() => setDetails(false)}>
           Close contact panel ×
         </button>
-        {editable && (
-          <Copilot
-            id={id}
-            tick={tick}
-            refresh={refresh}
-            onUse={(text) => {
-              setNoteMode(false);
-              setDraft(text);
-              setDetails(false);
-            }}
-          />
-        )}
-        <ContactPanel
-          id={conversation.contact_id}
-          refresh={tick}
-          onChange={refresh}
-        />
+        <ContactSummary contact={contact} conversation={conversation} />
       </div>
     </div>
+  );
+}
+
+function ContactSummary({
+  contact,
+  conversation,
+}: {
+  contact: Contact | null;
+  conversation: Conversation;
+}) {
+  if (!contact) return <Skeleton />;
+  const warm = ["CONTACTED", "COUNSELING", "DOCUMENTS"];
+  const hot = ["QUALIFIED", "APPLICATION", "OFFER", "VISA", "ENROLLED"];
+  const temperature = hot.includes(contact.stage)
+    ? "Hot"
+    : warm.includes(contact.stage)
+      ? "Warm"
+      : contact.stage === "LOST"
+        ? "Cold"
+        : "New";
+  const username = conversation.username || contact.identities?.[0]?.username;
+  const fields = [
+    ["Instagram", username ? "@" + username : "—"],
+    ["Country", contact.country || "—"],
+    ["Lead temperature", temperature],
+    ["Program interest", contact.program_interests || "—"],
+    ["Degree", contact.degree_level || "—"],
+    ["Intake", contact.target_intake || "—"],
+    ["Assigned counselor", conversation.assignee_name || "Unassigned"],
+  ];
+  return (
+    <aside className="crm-contact-summary">
+      <header>
+        <Avatar name={contact.display_name} />
+        <div>
+          <strong dir="auto">{contact.display_name}</strong>
+          <small>Student snapshot</small>
+        </div>
+      </header>
+      <dl>
+        {fields.map(([label, value]) => (
+          <div key={label}>
+            <dt>{label}</dt>
+            <dd dir="auto">{value}</dd>
+          </div>
+        ))}
+      </dl>
+      <Link
+        className="crm-primary crm-open-profile"
+        to={`/crm/contacts/${contact.id}`}
+      >
+        Open CRM profile
+      </Link>
+    </aside>
   );
 }
