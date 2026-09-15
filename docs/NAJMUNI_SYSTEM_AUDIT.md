@@ -4,6 +4,8 @@ Audited from repository source on 2026-09-15. This is a code and configuration a
 
 This document records the **pre-PostgreSQL-foundation** architecture. The later foundation changes and migration procedure are documented in `docs/POSTGRES_MIGRATION_RUNBOOK.md`; the SQLite startup behavior described below is historical.
 
+Production switched to PostgreSQL on 2026-09-15. The current database state, verification, and preserved SQLite rollback files are recorded in `docs/POSTGRES_MIGRATION_RUNBOOK.md`.
+
 ## Current architecture
 
 NajmUni is a React 18 + TypeScript + Vite single-page application backed by one Flask application (`server/app.py`) and a local SQLite file. React Router owns public and private page navigation. In development, Vite serves port 5173 and proxies `/api` to Flask on port 5000. In the documented production configuration, a Vite build produces `client/dist`, Flask serves that build with an SPA fallback, and Gunicorn runs Flask. `VITE_API_URL` can instead direct a separately hosted frontend to the documented `https://api.najmuni.com` API. The repository does not prove the current live topology or Render settings.

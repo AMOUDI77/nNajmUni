@@ -1,12 +1,31 @@
 # NajmUni PostgreSQL migration runbook
 
-This runbook describes the isolated PostgreSQL rehearsal and the **later** production cutover. The production Flask service has not been connected to PostgreSQL, production SQLite has not been modified, and the foundation code has not been deployed. Treat the existing SQLite service as the sole production source until a verified cutover. Do not run Alembic or the copy tool against the live Render SQLite database.
+This runbook records the isolated rehearsal and the production cutover completed on 2026-09-15. NajmUni production now uses Flask with Render PostgreSQL 17 through `DATABASE_URL`; React remains the frontend. `DB_PATH=/var/data/najmuni.db` is retained as a rollback setting. The original SQLite file and a separate backup remain on the Render persistent disk. Never run Alembic or the copy tool against the live SQLite file, and never publish connection URLs or production database files.
+
+## Production cutover verification, 2026-09-15
+
+PR #1 was merged into main as `be67e3b2e53e9e8745c8803131e42587b5202f99`, and Render reported that exact deployed commit. The foundation was deployed first with `DATABASE_URL` unset and the existing SQLite path intact. The persistent-disk write-freeze marker then made three live lead-write probes return 503 while catalog reads continued to return 200. A new SQLite online backup was taken from a read-only live connection after the freeze. Its integrity check passed and its SHA-256 equaled the ignored local snapshot already loaded into the isolated PostgreSQL database. Because the frozen backup was byte-for-byte identical to that validated source, a second PostgreSQL reset/load after the freeze was unnecessary; every PostgreSQL record was compared again to the frozen source before switching the service.
+
+Render was then deployed with its internal PostgreSQL `DATABASE_URL`, keeping `DB_PATH` unchanged. The deployed Flask engine selected PostgreSQL, connected internally to PostgreSQL 17.11, and reported Alembic revision `0001_baseline`. Public catalog, university detail/program links, private admin queues, student CRM reads, and the React routes returned successfully. The marker stayed in place through these read checks and was removed only after record-by-record comparison, foreign-key, and sequence checks passed. A uniquely marked student was created, updated, listed, and deleted through the live API; its new write appeared in PostgreSQL while SQLite stayed unchanged. Temporary lead and reservation create/update/delete checks ran through the deployed Flask code with SMTP disabled only in that test process, and their rows were removed. All six PostgreSQL tables returned to the exact frozen record set after those checks.
+
+| Table | Frozen SQLite | Production PostgreSQL |
+| --- | ---: | ---: |
+| universities | 26 | 26 |
+| institutes | 7 | 7 |
+| programs | 57 | 57 |
+| leads | 310 | 310 |
+| reservations | 27 | 27 |
+| students | 0 | 0 |
+
+Every field, primary ID, NULL, Unicode value, and timestamp matched; `programs.university_id` links were valid, the PostgreSQL FK was present, and every next ID remained above the existing maximum. The live SQLite file was still byte-identical to `/var/data/najmuni-pre-postgres-cutover-20260915.db` after PostgreSQL write tests. The backup passed a read-only restore into an in-memory nonproduction database. The marker is absent and ordinary API writes are open on PostgreSQL. The last code validation was 17 backend tests, TypeScript check, and Vite production build, all passing. No production data or credential was committed.
+
+The GitHub Vercel deployment check failed on both the pre-migration main commit and the migration PR/main commit. The existing `najmuni.com` pages returned 200 and its live bundle targets `api.najmuni.com`; this database cutover did not repair or validate a new Vercel deployment. Monitor that separate frontend deployment issue without changing the PostgreSQL source of truth.
 
 ## Rehearsal status, 2026-09-15
 
-The isolated Render PostgreSQL 17 database passed an Alembic baseline upgrade, a six-table copy from the ignored production SQLite snapshot, independent record-by-record comparison, foreign-key and ID-sequence checks, and a 15-endpoint Flask API smoke test. The smoke test found and fixed a psycopg SELECT-cursor regression in `server/db/engine.py`; its temporary lead, reservation, and student records were removed. The destination was then verified to contain only rehearsal data, reset, upgraded through Alembic again, and reloaded. The final copied rows match the snapshot exactly: 26 universities, 7 institutes, 57 programs, 310 leads, 27 reservations, and 0 students. A new SQLite online backup made from the live source through a read-only connection had the same SHA-256 as the ignored local snapshot; a second read-only backup check after the PostgreSQL load still matched. This equality is a point-in-time check, **not** a write freeze. Production remains on SQLite and the cutover is pending.
+The isolated Render PostgreSQL 17 database passed an Alembic baseline upgrade, a six-table copy from the ignored production SQLite snapshot, independent record-by-record comparison, foreign-key and ID-sequence checks, and a 15-endpoint Flask API smoke test. The smoke test found and fixed a psycopg SELECT-cursor regression in `server/db/engine.py`; its temporary lead, reservation, and student records were removed. The destination was then verified to contain only rehearsal data, reset, upgraded through Alembic again, and reloaded. The final copied rows matched the snapshot exactly: 26 universities, 7 institutes, 57 programs, 310 leads, 27 reservations, and 0 students. This was the pre-cutover rehearsal; the production verification above followed it.
 
-The prepared Flask code supports a temporary write freeze through a marker on the existing persistent disk: `/var/data/.najmuni-migration-write-freeze` when `DB_PATH=/var/data/najmuni.db`. When the marker exists, state-changing `/api/*` requests return 503 with `Retry-After`; reads remain available. The currently deployed older Flask code does **not** honor this marker. Deploy and verify the foundation code on SQLite first, then create the marker through the approved Render service shell, verify writes return 503, and only then make the final backup and switch database settings. Remove the marker after PostgreSQL has passed production checks. Never create or remove it by modifying `/var/data/najmuni.db`.
+The Flask code supports a temporary write freeze through a marker on the existing persistent disk: `/var/data/.najmuni-migration-write-freeze` when `DB_PATH=/var/data/najmuni.db`. When the marker exists, state-changing `/api/*` requests return 503 with `Retry-After`; reads remain available. This marker was used and then removed during the cutover. For any future controlled migration, verify the deployed code honors it before creating the marker. Never create or remove it by modifying `/var/data/najmuni.db`.
 
 ## Prepared code
 
@@ -39,7 +58,7 @@ On PowerShell, set `$env:DATABASE_URL` privately and run the same module command
 
 After rehearsal, verify API behavior using a staging Flask service with `DATABASE_URL`: public catalog, lead/reservation submissions, admin dashboard, student CRM CRUD, ID creation above the migrated maxima, and failure/rollback paths. Check sensitive student records only in authorized private tools. Confirm the destination counts independently and compare a sample of every table. Inspect Alembic revision and database constraints/indexes. Record any schema differences and resolve them in an additional versioned migration, not manual production edits.
 
-## Production cutover sequence (later, not executed)
+## Initial cutover checklist (historical; do not rerun on active PostgreSQL)
 
 1. Verify the prepared Flask code is serving SQLite with `DB_PATH=/var/data/najmuni.db`. Create the write-freeze marker, verify an API write receives 503, then take a fresh consistent, restorable SQLite backup. Keep `/var/data/najmuni.db` and a separate backup intact.
 2. Validate the final snapshot. Resolve any compatibility failures before touching PostgreSQL.
@@ -51,7 +70,7 @@ After rehearsal, verify API behavior using a staging Flask service with `DATABAS
 
 ## Rollback
 
-Before reopening writes, rollback is straightforward: restore the old Flask deployment/configuration using `DB_PATH`, keep the original SQLite file, and leave the failed PostgreSQL target quarantined. After PostgreSQL accepts new writes, rollback requires reconciling or exporting those new records; simply switching back to SQLite would lose them. Freeze writes immediately, inventory the PostgreSQL-only changes, and plan a reviewed data reconciliation before reopening the old service. Do not run both databases as live writers.
+During the frozen cutover, rollback would have restored the old Flask deployment/configuration using `DB_PATH`, kept the original SQLite file, and quarantined the PostgreSQL target. Production now accepts PostgreSQL writes. A future rollback requires reconciling or exporting those new records; simply switching back to SQLite would lose them. Freeze writes immediately, inventory the PostgreSQL-only changes, and plan a reviewed data reconciliation before reopening the old service. Do not run both databases as live writers.
 
 ## Known compatibility questions
 
@@ -59,4 +78,4 @@ Before reopening writes, rollback is straightforward: restore the old Flask depl
 - The frozen baseline migration creates six tables in a new database; it does **not** repair an arbitrary pre-existing, partly migrated schema. Require an empty PostgreSQL destination and a reviewed SQLite snapshot.
 - Existing catalog seed data is bundled in code; only an empty destination should be seeded for demos. Never seed the production migration target because the copier requires empty tables and because startup seeding historically overwrote institute edits.
 - SQLite text timestamps become PostgreSQL timestamp columns. API rows are formatted as the existing `YYYY-MM-DD HH:MM:SS` strings. Rehearsal must check timezone expectations and historical timestamp parseability.
-- The isolated PostgreSQL integration and copied-snapshot data quality passed rehearsal, but live Render deployment settings and the production write-freeze/cutover remain unverified. Review them before switching the service.
+- The production cutover checks above passed. Continue monitoring PostgreSQL backups, application errors, and new-write behavior; any rollback after new PostgreSQL writes requires reconciliation with the preserved SQLite copy.

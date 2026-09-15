@@ -72,8 +72,8 @@ Required production environment variables:
 - `ALLOWED_ORIGINS`
 - `ANTHROPIC_API_KEY` if the AI chat should be enabled
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `NOTIFY_EMAIL_TO` if email notifications should be enabled
-- `DB_PATH` if using SQLite
-- `DATABASE_URL` after migrating to PostgreSQL
+- `DATABASE_URL` for the active production PostgreSQL database
+- `DB_PATH=/var/data/najmuni.db` retained for SQLite rollback
 
 For production, `ALLOWED_ORIGINS` should include:
 
@@ -83,22 +83,9 @@ https://najmuni.com,https://www.najmuni.com
 
 ## Render Notes
 
-The current Render service is on the Free plan. Free web services can spin down after inactivity, which may delay the first request by 50 seconds or more.
+Production Flask uses Render PostgreSQL 17 through the server-side `DATABASE_URL`. React remains the frontend. The six existing business tables were moved from SQLite and verified record by record; see `docs/POSTGRES_MIGRATION_RUNBOOK.md` for the cutover evidence and recovery procedure.
 
-SQLite on Render Free is not safe for important leads or reservations because the filesystem is not persistent. Data can disappear after restarts, redeploys, or instance changes.
-
-Short-term options:
-
-- Upgrade the backend service to Render Starter.
-- Add a Persistent Disk.
-- Set `DB_PATH=/var/data/najmuni.db`.
-
-Recommended long-term option:
-
-- Move from SQLite to PostgreSQL.
-- Add `DATABASE_URL` to Render.
-- Update the Flask database layer to use PostgreSQL.
-- Keep leads, reservations, students, universities, institutes, and programs in PostgreSQL.
+`DB_PATH=/var/data/najmuni.db` remains configured as a rollback setting. The original SQLite file and a separate pre-cutover backup remain on the Render persistent disk. Do not run a second production SQLite writer or remove those files during the recovery period. After PostgreSQL receives new records, switching back to SQLite requires reconciling those PostgreSQL-only writes first.
 
 ## Email Notifications
 
