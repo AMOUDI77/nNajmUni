@@ -50,7 +50,7 @@ Before reopening writes, rollback is straightforward: restore the old Flask depl
 ## Known compatibility questions
 
 - Production SQLite may contain older/missing columns from ad hoc migrations or broken program links; the source validator must report these before PostgreSQL copying. The baseline FK on programs intentionally rejects invalid links rather than dropping data.
-- The baseline migration creates current metadata tables if absent, but does **not** repair an arbitrary pre-existing, partly migrated schema. Require an empty PostgreSQL destination and a reviewed SQLite snapshot.
+- The frozen baseline migration creates six tables in a new database; it does **not** repair an arbitrary pre-existing, partly migrated schema. Require an empty PostgreSQL destination and a reviewed SQLite snapshot.
 - Existing catalog seed data is bundled in code; only an empty destination should be seeded for demos. Never seed the production migration target because the copier requires empty tables and because startup seeding historically overwrote institute edits.
 - SQLite text timestamps become PostgreSQL timestamp columns. API rows are formatted as the existing `YYYY-MM-DD HH:MM:SS` strings. Rehearsal must check timezone expectations and historical timestamp parseability.
 - PostgreSQL integration, live Render settings, production data quality, and precise write-freeze mechanics remain unverified. Review them before executing this runbook.

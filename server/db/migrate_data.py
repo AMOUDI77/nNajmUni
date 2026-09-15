@@ -130,9 +130,10 @@ def main():
         os.environ['DATABASE_URL'] = args.database_url
     if not os.environ.get('DATABASE_URL', '').strip():
         parser.error('Set DATABASE_URL or pass --database-url')
-    url = database_url(str(Path(args.sqlite).resolve()))
-    engine = create_engine(url, pool_pre_ping=True, hide_parameters=True)
+    engine = None
     try:
+        url = database_url(str(Path(args.sqlite).resolve()))
+        engine = create_engine(url, pool_pre_ping=True, hide_parameters=True)
         counts = migrate(args.sqlite, engine)
         for name, count in counts.items():
             print(f'{name}: source={count} destination={count}')
@@ -144,7 +145,8 @@ def main():
         print('FAIL: migration aborted; destination transaction rolled back. Check server logs privately.')
         raise SystemExit(1) from None
     finally:
-        engine.dispose()
+        if engine is not None:
+            engine.dispose()
 
 
 if __name__ == '__main__':
