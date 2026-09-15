@@ -1,9 +1,10 @@
-import hmac, sqlite3, os, re, time, smtplib
+import hmac, os, re, time, smtplib
 from email.message import EmailMessage
 from functools import wraps
 from flask import Flask, jsonify, request, g, send_from_directory
 from flask_cors import CORS
 import anthropic
+from db.engine import make_engine, DatabaseConnection
 try:
     from dotenv import load_dotenv
 except ImportError:
@@ -33,7 +34,7 @@ DB_PATH    = os.environ.get('DB_PATH', os.path.join(_HERE, '..', 'data', 'najmun
 if not os.path.isabs(DB_PATH):
     DB_PATH = os.path.abspath(os.path.join(_HERE, DB_PATH))
 _DIST      = os.path.join(_HERE, '..', 'client', 'dist')
-os.makedirs(os.path.dirname(os.path.abspath(DB_PATH)), exist_ok=True)
+DATABASE_ENGINE = make_engine(DB_PATH)
 
 @app.after_request
 def add_security_headers(response):
@@ -77,8 +78,7 @@ def serve_static(path):
 
 def get_db():
     if 'db' not in g:
-        g.db = sqlite3.connect(DB_PATH)
-        g.db.row_factory = sqlite3.Row
+        g.db = DatabaseConnection(DATABASE_ENGINE)
     return g.db
 
 @app.teardown_appcontext
@@ -915,162 +915,6 @@ def delete_student(sid):
 
 # ── Schema + Seed ─────────────────────────────────────────────────────────────
 
-def init_db():
-    db = sqlite3.connect(DB_PATH)
-    db.executescript('''
-        CREATE TABLE IF NOT EXISTS universities (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            abbr TEXT, name TEXT, type TEXT, location TEXT,
-            qs_ranking INTEGER, color TEXT DEFAULT '#6D28D9',
-            description TEXT, website TEXT, domain TEXT,
-            tuition_min INTEGER, tuition_max INTEGER,
-            established INTEGER, students_count INTEGER
-        );
-        CREATE TABLE IF NOT EXISTS programs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            university_id INTEGER, name TEXT, level TEXT,
-            duration_years REAL, tuition_per_year INTEGER,
-            field TEXT, description TEXT, intake TEXT
-        );
-        CREATE TABLE IF NOT EXISTS institutes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            abbr TEXT, name TEXT, type TEXT DEFAULT 'language',
-            location TEXT, color TEXT DEFAULT '#4F6BFF',
-            description TEXT, website TEXT, domain TEXT,
-            tuition_min INTEGER DEFAULT 0, tuition_max INTEGER DEFAULT 0,
-            established INTEGER, students_count INTEGER DEFAULT 0
-        );
-        CREATE TABLE IF NOT EXISTS leads (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            email TEXT, phone TEXT, name TEXT, source TEXT DEFAULT 'landing',
-            status TEXT DEFAULT 'new',
-            nationality TEXT DEFAULT '', study_level TEXT DEFAULT '',
-            specialization TEXT DEFAULT '', qualification TEXT DEFAULT '', grade TEXT DEFAULT '',
-            english_level TEXT DEFAULT '', preferred_start TEXT DEFAULT '', passport_ready TEXT DEFAULT '',
-            financial_readiness TEXT DEFAULT '', score INTEGER DEFAULT 0,
-            preferred_university TEXT DEFAULT '',
-            priority TEXT DEFAULT 'low', category TEXT DEFAULT 'inquiry',
-            created_at TEXT DEFAULT (datetime('now'))
-        );
-        CREATE TABLE IF NOT EXISTS reservations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL, email TEXT NOT NULL, phone TEXT NOT NULL,
-            university TEXT DEFAULT '', field TEXT DEFAULT '',
-            preferred_date TEXT DEFAULT '', notes TEXT DEFAULT '',
-            status TEXT DEFAULT 'new',
-            created_at TEXT DEFAULT (datetime('now'))
-        );
-        CREATE TABLE IF NOT EXISTS students (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            full_name TEXT NOT NULL,
-            email TEXT DEFAULT '',
-            phone TEXT DEFAULT '',
-            nationality TEXT DEFAULT '',
-            field TEXT DEFAULT '',
-            university TEXT DEFAULT '',
-            status TEXT DEFAULT 'new',
-            notes TEXT DEFAULT '',
-            created_at TEXT DEFAULT (datetime('now')),
-            updated_at TEXT DEFAULT (datetime('now'))
-        );
-    ''')
-    db.executescript('''
-        CREATE INDEX IF NOT EXISTS idx_leads_email      ON leads(email);
-        CREATE INDEX IF NOT EXISTS idx_leads_status     ON leads(status);
-        CREATE INDEX IF NOT EXISTS idx_leads_created    ON leads(created_at);
-        CREATE INDEX IF NOT EXISTS idx_res_status       ON reservations(status);
-        CREATE INDEX IF NOT EXISTS idx_res_created      ON reservations(created_at);
-        CREATE INDEX IF NOT EXISTS idx_students_status  ON students(status);
-        CREATE INDEX IF NOT EXISTS idx_students_created ON students(created_at);
-        CREATE INDEX IF NOT EXISTS idx_programs_uni     ON programs(university_id);
-        CREATE INDEX IF NOT EXISTS idx_programs_field   ON programs(field);
-        CREATE INDEX IF NOT EXISTS idx_unis_type        ON universities(type);
-        CREATE INDEX IF NOT EXISTS idx_institutes_type  ON institutes(type);
-    ''')
-
-    # migrate: add status/phone columns to leads if not present
-    cols = [r[1] for r in db.execute("PRAGMA table_info(leads)").fetchall()]
-    if 'status' not in cols:
-        db.execute("ALTER TABLE leads ADD COLUMN status TEXT DEFAULT 'new'")
-        db.commit()
-    if 'phone' not in cols:
-        db.execute("ALTER TABLE leads ADD COLUMN phone TEXT")
-        db.commit()
-    lead_migrations = {
-        'nationality': "ALTER TABLE leads ADD COLUMN nationality TEXT DEFAULT ''",
-        'study_level': "ALTER TABLE leads ADD COLUMN study_level TEXT DEFAULT ''",
-        'specialization': "ALTER TABLE leads ADD COLUMN specialization TEXT DEFAULT ''",
-        'qualification': "ALTER TABLE leads ADD COLUMN qualification TEXT DEFAULT ''",
-        'grade': "ALTER TABLE leads ADD COLUMN grade TEXT DEFAULT ''",
-        'english_level': "ALTER TABLE leads ADD COLUMN english_level TEXT DEFAULT ''",
-        'preferred_start': "ALTER TABLE leads ADD COLUMN preferred_start TEXT DEFAULT ''",
-        'passport_ready': "ALTER TABLE leads ADD COLUMN passport_ready TEXT DEFAULT ''",
-        'financial_readiness': "ALTER TABLE leads ADD COLUMN financial_readiness TEXT DEFAULT ''",
-        'preferred_university': "ALTER TABLE leads ADD COLUMN preferred_university TEXT DEFAULT ''",
-        'score': "ALTER TABLE leads ADD COLUMN score INTEGER DEFAULT 0",
-        'priority': "ALTER TABLE leads ADD COLUMN priority TEXT DEFAULT 'low'",
-        'category': "ALTER TABLE leads ADD COLUMN category TEXT DEFAULT 'inquiry'",
-    }
-    for col, stmt in lead_migrations.items():
-        if col not in cols:
-            db.execute(stmt)
-    db.execute("CREATE INDEX IF NOT EXISTS idx_leads_phone ON leads(phone)")
-    db.commit()
-
-    # migrate: keep older university databases compatible with the admin editor
-    uni_cols = [r[1] for r in db.execute("PRAGMA table_info(universities)").fetchall()]
-    uni_migrations = {
-        'color': "ALTER TABLE universities ADD COLUMN color TEXT DEFAULT '#6D28D9'",
-        'description': "ALTER TABLE universities ADD COLUMN description TEXT DEFAULT ''",
-        'website': "ALTER TABLE universities ADD COLUMN website TEXT DEFAULT ''",
-        'domain': "ALTER TABLE universities ADD COLUMN domain TEXT DEFAULT ''",
-        'tuition_min': "ALTER TABLE universities ADD COLUMN tuition_min INTEGER DEFAULT 0",
-        'tuition_max': "ALTER TABLE universities ADD COLUMN tuition_max INTEGER DEFAULT 0",
-        'established': "ALTER TABLE universities ADD COLUMN established INTEGER",
-        'students_count': "ALTER TABLE universities ADD COLUMN students_count INTEGER DEFAULT 0",
-    }
-    for col, stmt in uni_migrations.items():
-        if col not in uni_cols:
-            db.execute(stmt)
-    db.commit()
-
-    # migrate: create reservations table if added after initial seed
-    db.execute('''
-        CREATE TABLE IF NOT EXISTS reservations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL, email TEXT NOT NULL, phone TEXT NOT NULL,
-            university TEXT DEFAULT '', field TEXT DEFAULT '',
-            preferred_date TEXT DEFAULT '', notes TEXT DEFAULT '',
-            status TEXT DEFAULT 'new',
-            created_at TEXT DEFAULT (datetime('now'))
-        )
-    ''')
-    db.commit()
-
-    # migrate: students table for existing databases
-    db.execute('''
-        CREATE TABLE IF NOT EXISTS students (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            full_name TEXT NOT NULL,
-            email TEXT DEFAULT '',
-            phone TEXT DEFAULT '',
-            nationality TEXT DEFAULT '',
-            field TEXT DEFAULT '',
-            university TEXT DEFAULT '',
-            status TEXT DEFAULT 'new',
-            notes TEXT DEFAULT '',
-            created_at TEXT DEFAULT (datetime('now')),
-            updated_at TEXT DEFAULT (datetime('now'))
-        )
-    ''')
-    db.commit()
-
-    if db.execute('SELECT COUNT(*) FROM universities').fetchone()[0] == 0:
-        seed(db)
-    seed_institutes(db)
-    db.close()
-
-
 # (abbr, name, type, location, qs_ranking, color, description, website, domain, tuition_min, tuition_max, established, students_count)
 UNIVERSITIES = [
     # ── Public universities ────────────────────────────────────────────────────
@@ -1286,7 +1130,6 @@ def seed(db):
                 'INSERT INTO programs (university_id,name,level,duration_years,tuition_per_year,field,description,intake) VALUES (?,?,?,?,?,?,?,?)',
                 [uid, name, level, dur, fee, field, desc, intake]
             )
-    db.commit()
     print(f'Seeded {len(UNIVERSITIES)} universities and {len(PROGRAMS)} programs')
 
 
@@ -1309,11 +1152,10 @@ def seed_institutes(db):
                 'INSERT INTO institutes (abbr,name,type,location,color,description,website,domain,tuition_min,tuition_max,established,students_count) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
                 row
             )
-    db.commit()
     print(f'Ensured {len(INSTITUTES)} institutes')
 
 
-init_db()  # runs on every startup (gunicorn + dev)
+# Schema migrations and seed data are explicit commands, never Gunicorn startup work.
 
 if __name__ == '__main__':
     port  = int(os.environ.get('PORT', 5000))
