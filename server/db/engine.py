@@ -82,7 +82,10 @@ class DatabaseConnection:
                 inserted = result.scalar_one()
                 return DBCursor(None, inserted)
         result = self.connection.exec_driver_sql(sql, tuple(params))
-        return DBCursor(result, getattr(result, 'lastrowid', None))
+        # psycopg closes a SELECT cursor when SQLAlchemy probes lastrowid.
+        # PostgreSQL inserts use RETURNING above; only SQLite needs this value.
+        lastrowid = getattr(result, 'lastrowid', None) if not self.postgres else None
+        return DBCursor(result, lastrowid)
 
     def commit(self):
         self.connection.commit()

@@ -15,6 +15,7 @@ __pycache__/
 .env
 .env.*
 !.env.example
+server/.postgres-migration.local.env
 
 data/*.db
 data/*.db-*

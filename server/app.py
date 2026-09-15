@@ -35,6 +35,18 @@ if not os.path.isabs(DB_PATH):
     DB_PATH = os.path.abspath(os.path.join(_HERE, DB_PATH))
 _DIST      = os.path.join(_HERE, '..', 'client', 'dist')
 DATABASE_ENGINE = make_engine(DB_PATH)
+WRITE_FREEZE_MARKER = os.path.join(os.path.dirname(DB_PATH), '.najmuni-migration-write-freeze')
+
+@app.before_request
+def enforce_migration_write_freeze():
+    # A marker on the persistent disk lets a controlled cutover stop API writes
+    # before the final SQLite backup, without altering the database itself.
+    if (request.path.startswith('/api/') and request.method in {'POST', 'PUT', 'PATCH', 'DELETE'}
+            and os.path.isfile(WRITE_FREEZE_MARKER)):
+        response = jsonify(error='NajmUni is temporarily read-only during database maintenance')
+        response.status_code = 503
+        response.headers['Retry-After'] = '300'
+        return response
 
 @app.after_request
 def add_security_headers(response):
