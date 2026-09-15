@@ -10,10 +10,12 @@ server/dist/
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.venv/
 
 .env
 .env.*
 !.env.example
+server/.postgres-migration.local.env
 
 data/*.db
 data/*.db-*
