@@ -90,7 +90,7 @@ def test_alembic_baseline_is_explicit_and_versioned(tmp_path, monkeypatch):
     monkeypatch.setenv('DB_PATH', str(path))
     config = Config(str(server_dir / 'alembic.ini'))
     config.set_main_option('script_location', str(server_dir / 'db' / 'migrations'))
-    command.upgrade(config, 'head')
+    command.upgrade(config, '0001_baseline')
     engine = create_engine('sqlite:///' + str(path).replace('\\', '/'))
     with engine.connect() as conn:
         for table in TABLE_BY_NAME.values():

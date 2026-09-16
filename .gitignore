@@ -10,6 +10,9 @@ server/dist/
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.vitest/
+client/test-results/
+client/playwright-report/
 .venv/
 
 .env

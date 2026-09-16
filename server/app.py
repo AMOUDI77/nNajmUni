@@ -1168,6 +1168,8 @@ def seed_institutes(db):
 
 
 # Schema migrations and seed data are explicit commands, never Gunicorn startup work.
+from crm import register_crm
+register_crm(app, lambda: DATABASE_ENGINE)
 
 if __name__ == '__main__':
     port  = int(os.environ.get('PORT', 5000))
