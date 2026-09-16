@@ -5,6 +5,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 from .auth import require_staff
 from .common import audit, body, engine, now, output, page_limit, query_id, string
 from .contacts import EDIT
+from .inbox import add_event
 from .messaging import policy_error, queue_message
 from .schema_v1 import (
     assignments,
@@ -12,14 +13,14 @@ from .schema_v1 import (
     contacts,
     flow_sessions,
     identities,
+    jobs,
     labels,
     messages,
     social_accounts,
     staff_users,
 )
-from .schema_v1 import (
-    conversations as table,
-)
+from .schema_v1 import conversations as table
+from .schema_v3 import conversation_reminders, conversation_sources
 from .search import CONTACT_SEARCH, IDENTITY_SEARCH, MESSAGE_SEARCH, text_matches
 
 api = Blueprint("crm_conversations", __name__, url_prefix="/api/crm")
@@ -36,17 +37,40 @@ def conversation(conn, vid, lock=False):
 @api.get("/conversations")
 @require_staff()
 def list_conversations():
+    reminder_at = (
+        select(conversation_reminders.c.remind_at)
+        .where(
+            conversation_reminders.c.conversation_id == table.c.id,
+            conversation_reminders.c.status == "OPEN",
+        )
+        .order_by(conversation_reminders.c.remind_at)
+        .limit(1)
+        .correlate(table)
+        .scalar_subquery()
+        .label("reminder_at")
+    )
+    source_type = (
+        select(conversation_sources.c.source_type)
+        .where(conversation_sources.c.conversation_id == table.c.id)
+        .correlate(table)
+        .scalar_subquery()
+        .label("source_type")
+    )
     query = select(
         table,
         contacts.c.display_name,
         contacts.c.stage,
         identities.c.username,
         staff_users.c.full_name.label("assignee_name"),
+        reminder_at,
+        source_type,
     ).join(contacts, contacts.c.id == table.c.contact_id)
     query = query.join(identities, identities.c.id == table.c.identity_id).outerjoin(
         staff_users, staff_users.c.id == table.c.assigned_to
     )
     view = request.args.get("view", "all")
+    if view == "open":
+        query = query.where(table.c.status == "OPEN")
     if view == "unread":
         query = query.where(table.c.unread.is_(True))
     if view == "unassigned":
@@ -64,6 +88,15 @@ def list_conversations():
                 ),
             )
         )
+    if view in ("reminders", "due"):
+        reminder_query = select(conversation_reminders.c.conversation_id).where(
+            conversation_reminders.c.status == "OPEN"
+        )
+        if view == "due":
+            reminder_query = reminder_query.where(
+                conversation_reminders.c.remind_at <= now()
+            )
+        query = query.where(table.c.id.in_(reminder_query))
     if request.args.get("label"):
         query = query.where(
             table.c.contact_id.in_(
@@ -140,6 +173,7 @@ def list_conversations():
             row["labels"] = [
                 dict(t) for t in tags if t["contact_id"] == row["contact_id"]
             ]
+            row["source_type"] = row["source_type"] or "instagram_dm"
     return output(
         {
             "items": rows[:limit],
@@ -206,9 +240,17 @@ def send(vid):
     data = body()
     text = string(data, "text", 1000, True)
     key = string(data, "request_id", 100, True)
+    close_after_send = data.get("close_after_send", False)
+    if not isinstance(close_after_send, bool):
+        raise BadRequest("Invalid send action")
     with engine().begin() as conn:
         mid = queue_message(
-            conn, vid, text, f"staff:{g.staff['id']}:{key}", g.staff["id"]
+            conn,
+            vid,
+            text,
+            f"staff:{g.staff['id']}:{key}",
+            g.staff["id"],
+            close_after_send=close_after_send,
         )
     return output({"id": mid, "status": "QUEUED"}, 202)
 
@@ -232,6 +274,8 @@ def edit(vid):
         values["unread"] = data["unread"]
     with engine().begin() as conn:
         conv = conversation(conn, vid, True)
+        old_status = conv["status"]
+        old_assignee = conv["assigned_to"]
         if "assigned_to" in data:
             uid = data["assigned_to"]
             if uid is not None and (
@@ -259,6 +303,37 @@ def edit(vid):
             )
         if values:
             conn.execute(update(table).where(table.c.id == vid).values(**values))
+        if values.get("status") and values["status"] != old_status:
+            add_event(
+                conn,
+                vid,
+                "status_changed",
+                f"Conversation moved {old_status.title()} → {values['status'].title()}",
+                g.staff["id"],
+            )
+        if "assigned_to" in values and values["assigned_to"] != old_assignee:
+            def staff_name(uid):
+                if uid is None:
+                    return "Unassigned"
+                return conn.execute(
+                    select(staff_users.c.full_name).where(staff_users.c.id == uid)
+                ).scalar_one()
+
+            add_event(
+                conn,
+                vid,
+                "assignment_changed",
+                f"Conversation moved {staff_name(old_assignee)} → {staff_name(values['assigned_to'])}",
+                g.staff["id"],
+            )
+        if values.get("control") == "HUMAN" and conv["control"] != "HUMAN":
+            add_event(
+                conn,
+                vid,
+                "human_takeover",
+                "Human takeover enabled",
+                g.staff["id"],
+            )
         if values.get("control") == "HUMAN":
             conn.execute(
                 update(flow_sessions)
@@ -282,4 +357,39 @@ def edit(vid):
             vid,
             changes=values,
         )
+    return jsonify(ok=True)
+
+
+@api.post("/conversations/<int:vid>/messages/<int:mid>/retry")
+@require_staff(*EDIT)
+def retry_message(vid, mid):
+    with engine().begin() as conn:
+        conversation(conn, vid, True)
+        message = conn.execute(
+            select(messages)
+            .where(messages.c.id == mid, messages.c.conversation_id == vid)
+            .with_for_update()
+        ).mappings().first()
+        if not message or message["status"] != "FAILED":
+            raise BadRequest("Only failed messages can be retried")
+        conn.execute(
+            update(messages)
+            .where(messages.c.id == mid)
+            .values(status="QUEUED", safe_error=None)
+        )
+        conn.execute(
+            update(jobs)
+            .where(jobs.c.dedupe_key == f"send:{mid}")
+            .values(
+                status="QUEUED",
+                attempts=0,
+                next_attempt_at=now(),
+                lease_token=None,
+                started_at=None,
+                completed_at=None,
+                safe_error=None,
+            )
+        )
+        add_event(conn, vid, "message_retried", "Failed message queued for retry", g.staff["id"])
+        audit(conn, g.staff["id"], "message.retried", "conversation", vid, message_id=mid)
     return jsonify(ok=True)

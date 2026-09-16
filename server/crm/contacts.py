@@ -282,7 +282,7 @@ def contact_detail(cid):
 def edit_contact(cid):
     values = contact_values(body())
     with engine().begin() as conn:
-        get_contact(conn, cid, True)
+        existing = get_contact(conn, cid, True)
         conn.execute(
             update(contacts)
             .where(contacts.c.id == cid)
@@ -291,6 +291,31 @@ def edit_contact(cid):
         audit(
             conn, g.staff["id"], "contact.updated", "contact", cid, fields=list(values)
         )
+        tracked = {
+            "degree_level": "Degree Level",
+            "program_interests": "Program",
+            "target_intake": "Intake",
+            "country": "Country",
+        }
+        vid = conn.execute(
+            select(conversations.c.id)
+            .where(conversations.c.contact_id == cid)
+            .order_by(conversations.c.last_message_at.desc(), conversations.c.id.desc())
+            .limit(1)
+        ).scalar_one_or_none()
+        if vid:
+            from .inbox import add_event
+
+            for field, label in tracked.items():
+                if field in values and values[field] and values[field] != existing[field]:
+                    add_event(
+                        conn,
+                        vid,
+                        "contact_field_saved",
+                        f"{label} saved as {values[field]}",
+                        g.staff["id"],
+                        field=field,
+                    )
     return jsonify(ok=True)
 
 
@@ -452,10 +477,34 @@ def label_contact(cid, lid):
         ).first():
             raise NotFound("Active label not found")
         where = (contact_labels.c.contact_id == cid, contact_labels.c.label_id == lid)
+        label_name = conn.execute(
+            select(labels.c.name).where(labels.c.id == lid)
+        ).scalar_one()
+        changed = False
         if request.method == "DELETE":
+            changed = bool(conn.execute(select(contact_labels).where(*where)).first())
             conn.execute(delete(contact_labels).where(*where))
         elif not conn.execute(select(contact_labels).where(*where)).first():
             conn.execute(contact_labels.insert().values(contact_id=cid, label_id=lid))
+            changed = True
+        if changed:
+            vid = conn.execute(
+                select(conversations.c.id)
+                .where(conversations.c.contact_id == cid)
+                .order_by(conversations.c.last_message_at.desc(), conversations.c.id.desc())
+                .limit(1)
+            ).scalar_one_or_none()
+            if vid:
+                from .inbox import add_event
+
+                add_event(
+                    conn,
+                    vid,
+                    "label_changed",
+                    f'Label “{label_name}” {"removed" if request.method == "DELETE" else "added"}',
+                    g.staff["id"],
+                    label_id=lid,
+                )
         audit(
             conn,
             g.staff["id"],

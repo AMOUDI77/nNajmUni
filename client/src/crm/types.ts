@@ -27,6 +27,8 @@ export type Conversation = {
   status: string;
   labels: Label[];
   send_blocked_reason?: string | null;
+  reminder_at?: string | null;
+  source_type?: string;
 };
 export type Message = {
   id: number;
@@ -39,6 +41,38 @@ export type Message = {
   created_at: string;
   provider_timestamp?: string;
   attachments: { type: string; url?: string }[];
+};
+export type ConversationEvent = {
+  id: number;
+  event_type: string;
+  text: string;
+  details: Record<string, unknown>;
+  created_at: string;
+};
+export type Reminder = {
+  id: number;
+  remind_at: string;
+  status: "OPEN" | "DONE" | "CANCELLED";
+  creator_name: string;
+  created_at: string;
+};
+export type ConversationSource = {
+  id: number;
+  provider: string;
+  source_type: string;
+  media_id?: string;
+  media_type?: string;
+  thumbnail_url?: string;
+  caption?: string;
+  original_comment?: string;
+  keyword?: string;
+  automation_name?: string;
+  occurred_at: string;
+};
+export type ConversationContext = {
+  source: ConversationSource | null;
+  events: ConversationEvent[];
+  reminders: Reminder[];
 };
 export type Note = {
   id: number;

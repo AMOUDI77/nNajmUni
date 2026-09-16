@@ -11,12 +11,14 @@ from .auth import require_staff
 from .common import audit, body, engine, now, output, string
 from .schema_v1 import (
     audit_events,
+    conversations,
     jobs,
     knowledge,
     settings,
     webhook_events,
 )
 from .schema_v2 import saved_replies
+from .schema_v3 import saved_reply_usage
 
 api = Blueprint("crm_settings", __name__, url_prefix="/api/crm")
 SHORTCUT = re.compile(r"^[a-z0-9_-]{1,32}$")
@@ -136,6 +138,29 @@ def saved_reply_values(data):
 def list_saved_replies():
     query = request.args.get("q", "").strip()[:100]
     include_archived = request.args.get("include_archived") == "1"
+    recent = request.args.get("recent") == "1"
+    if recent:
+        with engine().connect() as conn:
+            rows = conn.execute(
+                select(saved_replies)
+                .join(
+                    saved_reply_usage,
+                    saved_reply_usage.c.saved_reply_id == saved_replies.c.id,
+                )
+                .where(
+                    saved_reply_usage.c.staff_id == g.staff["id"],
+                    saved_replies.c.status == "ACTIVE",
+                )
+                .order_by(saved_reply_usage.c.created_at.desc())
+                .limit(30)
+            ).mappings().all()
+        unique = []
+        seen = set()
+        for row in rows:
+            if row["id"] not in seen:
+                seen.add(row["id"])
+                unique.append(row)
+        return output(unique[:8])
     statement = select(saved_replies)
     if not include_archived:
         statement = statement.where(saved_replies.c.status == "ACTIVE")
@@ -155,6 +180,34 @@ def list_saved_replies():
             .all()
         )
     return output(rows)
+
+
+@api.post("/saved-replies/<int:rid>/use")
+@require_staff("OWNER", "ADMIN", "COUNSELOR")
+def use_saved_reply(rid):
+    data = body()
+    conversation_id = data.get("conversation_id")
+    if not isinstance(conversation_id, int) or isinstance(conversation_id, bool):
+        raise BadRequest("Invalid conversation")
+    with engine().begin() as conn:
+        if not conn.execute(
+            select(saved_replies.c.id).where(
+                saved_replies.c.id == rid, saved_replies.c.status == "ACTIVE"
+            )
+        ).first():
+            raise NotFound("Active saved reply not found")
+        if not conn.execute(
+            select(conversations.c.id).where(conversations.c.id == conversation_id)
+        ).first():
+            raise NotFound("Conversation not found")
+        conn.execute(
+            saved_reply_usage.insert().values(
+                saved_reply_id=rid,
+                staff_id=g.staff["id"],
+                conversation_id=conversation_id,
+            )
+        )
+    return jsonify(ok=True)
 
 
 @api.post("/saved-replies")

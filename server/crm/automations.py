@@ -258,6 +258,8 @@ def matches(trigger, event, inbound_count=None, previous_inbound_at=None):
 
 
 def handle_event(conn, vid, event, key):
+    from .inbox import add_event
+
     conv = (
         conn.execute(
             select(conversations).where(conversations.c.id == vid).with_for_update()
@@ -311,7 +313,7 @@ def handle_event(conn, vid, event, key):
         if session["waiting_field"]:
             # Collected responses fill empty fields only; counselors own verified data.
             field = session["waiting_field"]
-            conn.execute(
+            saved = conn.execute(
                 update(contacts)
                 .where(
                     contacts.c.id == conv["contact_id"],
@@ -319,6 +321,15 @@ def handle_event(conn, vid, event, key):
                 )
                 .values(**{field: reply[:500]}, updated_at=now())
             )
+            if saved.rowcount:
+                add_event(
+                    conn,
+                    vid,
+                    "contact_field_saved",
+                    f"{field.replace('_', ' ').title()} saved as {reply[:120]}",
+                    None,
+                    field=field,
+                )
         session = dict(session)
         session["last_event_key"] = key
     else:
@@ -386,6 +397,14 @@ def handle_event(conn, vid, event, key):
                 status="RUNNING",
             )
         ).inserted_primary_key[0]
+        add_event(
+            conn,
+            vid,
+            "automation_started",
+            f'Automation “{rule["name"]}” started',
+            None,
+            rule_id=rule["id"],
+        )
         values = {
             "run_id": runid,
             "steps": rule["steps"],
@@ -461,7 +480,12 @@ def handle_event(conn, vid, event, key):
                     contact_labels.c.label_id == lid,
                 )
                 if action == "REMOVE_LABEL":
-                    conn.execute(delete(contact_labels).where(*where))
+                    changed = conn.execute(delete(contact_labels).where(*where)).rowcount
+                    if changed:
+                        label_name = conn.execute(
+                            select(labels.c.name).where(labels.c.id == lid)
+                        ).scalar_one()
+                        add_event(conn, vid, "label_changed", f'Label “{label_name}” removed')
                 elif (
                     conn.execute(
                         select(labels.c.id).where(
@@ -475,11 +499,15 @@ def handle_event(conn, vid, event, key):
                             contact_id=conv["contact_id"], label_id=lid
                         )
                     )
+                    label_name = conn.execute(
+                        select(labels.c.name).where(labels.c.id == lid)
+                    ).scalar_one()
+                    add_event(conn, vid, "label_changed", f'Label “{label_name}” added')
             if action in ("CREATE_LEAD", "LINK_OR_UPDATE_LEAD"):
                 create_linked_lead(conn, conv["contact_id"], None)
             if action == "UPDATE_CONTACT_FIELD":
                 field = step["field"]
-                conn.execute(
+                saved = conn.execute(
                     update(contacts)
                     .where(
                         contacts.c.id == conv["contact_id"],
@@ -487,6 +515,15 @@ def handle_event(conn, vid, event, key):
                     )
                     .values(**{field: step["value"]}, updated_at=now())
                 )
+                if saved.rowcount:
+                    add_event(
+                        conn,
+                        vid,
+                        "contact_field_saved",
+                        f"{field.replace('_', ' ').title()} saved as {step['value'][:120]}",
+                        None,
+                        field=field,
+                    )
             if action == "ASSIGN_COUNSELOR":
                 uid = step["target_id"]
                 if not conn.execute(
@@ -502,12 +539,22 @@ def handle_event(conn, vid, event, key):
                     .where(conversations.c.id == vid)
                     .values(assigned_to=uid)
                 )
+                counselor = conn.execute(
+                    select(staff_users.c.full_name).where(staff_users.c.id == uid)
+                ).scalar_one()
+                add_event(
+                    conn,
+                    vid,
+                    "assignment_changed",
+                    f"Conversation assigned to {counselor}",
+                )
             if action == "HUMAN_HANDOFF":
                 conn.execute(
                     update(conversations)
                     .where(conversations.c.id == vid)
                     .values(control="HUMAN")
                 )
+                add_event(conn, vid, "human_takeover", "Human takeover enabled")
                 status = "HANDED_OFF"
                 break
             if action == "STOP":

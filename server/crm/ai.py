@@ -53,6 +53,9 @@ def request_suggestion(vid):
         raise ServiceUnavailable(
             "AI is not configured. You can continue replying manually"
         )
+    request_kind = body().get("kind", "SUGGEST_REPLY")
+    if request_kind not in ("SUGGEST_REPLY", "SUMMARIZE", "NEXT_QUESTION"):
+        raise BadRequest("Invalid AI action")
     with engine().begin() as conn:
         conv = (
             conn.execute(
@@ -74,7 +77,10 @@ def request_suggestion(vid):
             return output({"id": pending}, 202)
         sid = conn.execute(
             suggestions.insert().values(
-                conversation_id=vid, requested_by=g.staff["id"], status="QUEUED"
+                conversation_id=vid,
+                requested_by=g.staff["id"],
+                status="QUEUED",
+                evidence={"kind": request_kind},
             )
         ).inserted_primary_key[0]
         enqueue(conn, "ai_suggestion", f"ai:{sid}", {"suggestion_id": sid})
@@ -231,6 +237,9 @@ def generate(engine, sid):
             .all()
         )
         mode = ai_mode(conn)
+        request_kind = (suggestion.get("evidence") or {}).get(
+            "kind", "SUGGEST_REPLY"
+        )
     if mode == "OFF":
         with engine.begin() as conn:
             conn.execute(
@@ -244,6 +253,11 @@ def generate(engine, sid):
         "next_action",
     ]
     context = {
+        "task": {
+            "SUGGEST_REPLY": "Draft a helpful reply for the counselor to review.",
+            "SUMMARIZE": "Summarize the conversation for the counselor. Put the concise summary in both reply and summary.",
+            "NEXT_QUESTION": "Suggest the single best next question the counselor should ask. Put only that question in reply.",
+        }[request_kind],
         "allowed_fields": allowed,
         "verified_profile": {
             k: contact[k] for k in FIELDS if k not in ("email", "phone")
@@ -323,13 +337,18 @@ def generate(engine, sid):
                 .where(suggestions.c.id == sid)
                 .values(
                     status="READY",
-                    text=result["reply"],
+                    text=(
+                        result.get("summary") or result["reply"]
+                        if request_kind == "SUMMARIZE"
+                        else result["reply"]
+                    ),
                     input_tokens=input_tokens,
                     output_tokens=output_tokens,
                     evidence={
                         "article_ids": [r["id"] for r in article_rows],
                         "message_ids": [r["id"] for r in recent],
                         "escalate": bool(result.get("escalate")),
+                        "kind": request_kind,
                     },
                 )
             )

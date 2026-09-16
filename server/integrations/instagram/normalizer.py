@@ -30,6 +30,10 @@ def attachments(items):
     return result
 
 
+def safe_url(value):
+    return value if isinstance(value, str) and len(value) <= 4096 and urlparse(value).scheme == "https" else None
+
+
 def normalize(payload):
     if not isinstance(payload, dict) or payload.get("object") != "instagram":
         return []
@@ -71,6 +75,7 @@ def normalize(payload):
             if change.get("field") != "comments":
                 continue
             value = change.get("value", {})
+            media = value.get("media", {}) if isinstance(value.get("media"), dict) else {}
             sender = str(value.get("from", {}).get("id", ""))
             if not value.get("id") or not sender or sender == account:
                 continue
@@ -85,6 +90,13 @@ def normalize(payload):
                     "attachments": [],
                     "username": value.get("from", {}).get("username"),
                     "media_id": str(value.get("media", {}).get("id", "")),
+                    "media_type": str(
+                        media.get("media_product_type") or media.get("media_type") or "post"
+                    )[:40],
+                    "thumbnail_url": safe_url(
+                        media.get("thumbnail_url") or media.get("media_url")
+                    ),
+                    "caption": str(media.get("caption") or value.get("media_caption") or "")[:2000],
                     "reference": None,
                 }
             )

@@ -8,6 +8,7 @@ from sqlalchemy import select, update
 from werkzeug.exceptions import BadRequest
 
 from .common import audit, now
+from .inbox import add_event
 from .schema_v1 import conversations, identities, messages, social_accounts
 
 
@@ -28,7 +29,16 @@ def policy_error(conversation, account, automated=False, comment=None):
     return None
 
 
-def queue_message(conn, vid, text, key, actor=None, automated=False, comment_id=None):
+def queue_message(
+    conn,
+    vid,
+    text,
+    key,
+    actor=None,
+    automated=False,
+    comment_id=None,
+    close_after_send=False,
+):
     conv = (
         conn.execute(
             select(conversations).where(conversations.c.id == vid).with_for_update()
@@ -94,12 +104,17 @@ def queue_message(conn, vid, text, key, actor=None, automated=False, comment_id=
             status="QUEUED",
         )
     ).inserted_primary_key[0]
-    enqueue(conn, "send_message", f"send:{mid}", {"message_id": mid})
+    enqueue(
+        conn,
+        "send_message",
+        f"send:{mid}",
+        {"message_id": mid, "close_after_send": bool(close_after_send)},
+    )
     audit(conn, actor, "message.queued", "conversation", vid, message_id=mid)
     return mid
 
 
-def deliver(engine, mid):
+def deliver(engine, mid, close_after_send=False):
     with engine.begin() as conn:
         msg = (
             conn.execute(select(messages).where(messages.c.id == mid).with_for_update())
@@ -216,3 +231,16 @@ def deliver(engine, mid):
             .where(conversations.c.id == conv["id"])
             .values(**values)
         )
+        if close_after_send and conv["status"] != "CLOSED":
+            conn.execute(
+                update(conversations)
+                .where(conversations.c.id == conv["id"])
+                .values(status="CLOSED")
+            )
+            add_event(
+                conn,
+                conv["id"],
+                "status_changed",
+                "Reply sent · Conversation moved Open → Closed",
+                msg["staff_id"],
+            )

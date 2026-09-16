@@ -21,6 +21,7 @@ from .schema_v1 import (
     touchpoints,
 )
 from .schema_v2 import saved_replies
+from .schema_v3 import conversation_events, conversation_reminders, conversation_sources
 
 
 def require_local(engine):
@@ -173,6 +174,38 @@ def seed_demo(engine, password):
                     created_at=stamp,
                 )
             )
+            if i == 0:
+                conn.execute(
+                    conversation_sources.insert().values(
+                        conversation_id=vid,
+                        provider="instagram",
+                        source_type="instagram_reel_comment",
+                        media_id="demo-reel",
+                        media_type="REEL",
+                        caption="Study in Malaysia: admissions, scholarships and visa guidance",
+                        original_comment=texts[i % len(texts)],
+                        keyword="Malaysia",
+                        automation_name="Malaysia study inquiry",
+                        occurred_at=stamp,
+                    )
+                )
+                conn.execute(
+                    conversation_events.insert().values(
+                        conversation_id=vid,
+                        actor_id=uid,
+                        event_type="assignment_changed",
+                        text="Conversation assigned to Demo Counselor",
+                        details={},
+                        created_at=stamp + timedelta(seconds=2),
+                    )
+                )
+                conn.execute(
+                    conversation_reminders.insert().values(
+                        conversation_id=vid,
+                        created_by=uid,
+                        remind_at=now() + timedelta(days=1),
+                    )
+                )
             conn.execute(
                 contact_labels.insert().values(contact_id=cid, label_id=lids[i % 3])
             )

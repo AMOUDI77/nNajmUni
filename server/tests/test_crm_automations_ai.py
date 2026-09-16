@@ -140,6 +140,17 @@ def test_ai_draft_memory_is_separate_and_failure_visible(crm_client, monkeypatch
             conn.execute(select(func.count()).select_from(messages)).scalar_one() == 1
         )
 
+    summary = crm_client.post(
+        "/api/crm/conversations/1/suggestions",
+        json={"kind": "SUMMARIZE"},
+        headers=headers,
+    )
+    assert summary.status_code == 202
+    drain()
+    generated = crm_client.get("/api/crm/conversations/1/suggestions").json[0]
+    assert generated["text"] == "Interested in Malaysia"
+    assert generated["evidence"]["kind"] == "SUMMARIZE"
+
     def fail(context):
         raise RuntimeError("sensitive provider detail")
 

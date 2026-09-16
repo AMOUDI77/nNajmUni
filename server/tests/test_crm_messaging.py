@@ -102,3 +102,71 @@ def test_takeover_and_assignment(crm_client, monkeypatch):
         ).status_code
         == 400
     )
+
+
+def test_send_and_close_waits_for_provider_acceptance(crm_client, monkeypatch):
+    headers = setup_conversation(crm_client, monkeypatch)
+    response = crm_client.post(
+        "/api/crm/conversations/1/messages",
+        json={"text": "Done", "request_id": "close-after", "close_after_send": True},
+        headers=headers,
+    )
+    assert response.status_code == 202
+    assert crm_client.get("/api/crm/conversations/1").json["status"] == "OPEN"
+    with application.app.app_context():
+        assert run_once(application.DATABASE_ENGINE)
+    assert crm_client.get("/api/crm/conversations/1").json["status"] == "CLOSED"
+    context = crm_client.get("/api/crm/conversations/1/context").json
+    assert any("Reply sent" in event["text"] for event in context["events"])
+    assert send(crm_client, envelope("message-after-close")).status_code == 200
+    with application.app.app_context():
+        assert run_once(application.DATABASE_ENGINE)
+    assert crm_client.get("/api/crm/conversations/1").json["status"] == "OPEN"
+    context = crm_client.get("/api/crm/conversations/1/context").json
+    assert any("Closed → Open" in event["text"] for event in context["events"])
+
+
+def test_only_failed_message_can_be_retried(crm_client, monkeypatch):
+    headers = setup_conversation(crm_client, monkeypatch)
+
+    def fail(*args):
+        raise ProviderError("Provider rejected request")
+
+    monkeypatch.setattr("crm.messaging.send_message", fail)
+    mid = crm_client.post(
+        "/api/crm/conversations/1/messages",
+        json={"text": "Retry me", "request_id": "retry-failed"},
+        headers=headers,
+    ).json["id"]
+    with application.app.app_context():
+        run_once(application.DATABASE_ENGINE)
+    assert crm_client.post(
+        f"/api/crm/conversations/1/messages/{mid}/retry", json={}, headers=headers
+    ).status_code == 200
+    with application.DATABASE_ENGINE.begin() as conn:
+        conn.execute(update(messages).where(messages.c.id == mid).values(status="UNCERTAIN"))
+    assert crm_client.post(
+        f"/api/crm/conversations/1/messages/{mid}/retry", json={}, headers=headers
+    ).status_code == 400
+
+
+def test_reminders_context_and_inbox_filters(crm_client, monkeypatch):
+    headers = setup_conversation(crm_client, monkeypatch)
+    created = crm_client.post(
+        "/api/crm/conversations/1/reminders",
+        json={"preset": "tomorrow"},
+        headers=headers,
+    )
+    assert created.status_code == 201, created.json
+    context = crm_client.get("/api/crm/conversations/1/context").json
+    assert context["source"]["source_type"] == "instagram_dm"
+    assert context["reminders"][0]["status"] == "OPEN"
+    assert any(event["event_type"] == "reminder_set" for event in context["events"])
+    rows = crm_client.get("/api/crm/conversations?view=reminders").json["items"]
+    assert len(rows) == 1 and rows[0]["reminder_at"]
+    assert crm_client.patch(
+        f"/api/crm/conversations/1/reminders/{created.json['id']}",
+        json={"status": "DONE"},
+        headers=headers,
+    ).status_code == 200
+    assert crm_client.get("/api/crm/conversations?view=reminders").json["items"] == []

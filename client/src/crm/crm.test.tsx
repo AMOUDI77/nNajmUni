@@ -48,6 +48,8 @@ function mockApi(override?: (path: string, init?: RequestInit) => unknown) {
       else if (path.startsWith("/conversations?"))
         data = { items: [conversation], next_offset: null };
       else if (path === "/conversations/1") data = conversation;
+      else if (path === "/conversations/1/context")
+        data = { source: null, events: [], reminders: [] };
       else if (path.startsWith("/conversations/1/messages"))
         data = {
           items: [
@@ -142,7 +144,7 @@ describe("CRM workflows", () => {
     const composer = await screen.findByLabelText("Reply message");
     await userEvent.type(composer, "A reply that must not be lost");
     await userEvent.click(
-      screen.getByRole("button", { name: "Send reply ↗" }),
+      screen.getByRole("button", { name: "Send" }),
     );
     expect(await screen.findByRole("alert")).toBeTruthy();
     expect((composer as HTMLTextAreaElement).value).toBe(
@@ -164,7 +166,7 @@ describe("CRM workflows", () => {
   it("applies server-side inbox filters", async () => {
     show();
     await userEvent.click(
-      await screen.findByRole("button", { name: "Assigned to me" }),
+      await screen.findByRole("button", { name: "Mine" }),
     );
     await waitFor(() =>
       expect(

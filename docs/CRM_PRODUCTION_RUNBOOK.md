@@ -25,7 +25,7 @@ Allow explicit HTTPS frontend origins, normally `https://najmuni.com` and `https
 ## Reviewed deployment sequence
 
 1. Complete current official Meta API contract/app-eligibility verification in `INSTAGRAM_INTEGRATION.md`. Configure the callback as `https://api.najmuni.com/api/crm/integrations/instagram/callback`, and webhook as `https://api.najmuni.com/api/webhooks/instagram`. Do not share credentials in chat.
-2. Confirm PostgreSQL backups and rehearse `0001_baseline → 0003_saved_replies` on a staging copy. The additive revisions create CRM tables and saved replies only. Do not use destructive downgrades as routine rollback.
+2. Confirm PostgreSQL backups and rehearse `0001_baseline → 0004_inbox_operations` on a staging copy. The additive revisions create CRM, saved-reply and Inbox-operation tables only. Do not use destructive downgrades as routine rollback.
 3. Build/test the reviewed commit and apply `python -m alembic -c alembic.ini upgrade head` explicitly from `server/`, once, during the planned rollout. Neither Gunicorn nor the worker runs Alembic.
 4. Deploy the API and matching frontend. Use the explicit `python -m crm.create_owner` command to bootstrap the first owner through hidden password prompts. Configure additional staff in Team settings.
 5. Start the background worker. Verify login/session cookies, CSRF, read-only viewer behavior, operation health, queue processing and all existing public/admin/student routes.
@@ -45,8 +45,8 @@ Frontend build tools were updated to patched Vite 6.4.3 / Vitest 4.1.11 without 
 - Backend suite with isolated local PostgreSQL 17: **45 passed**. This includes the explicit additive migrations, concurrent job claims, worker CLI startup, authorization, duplicate events, takeover, DM frequency guards, saved replies, automation, and AI draft checks.
 - SQLite suite: **43 passed, 2 skipped**; the skipped tests require PostgreSQL and passed in the PostgreSQL run.
 - Frontend unit tests: **6 passed**. TypeScript check and Vite production build passed.
-- Playwright against a disposable local Flask database and mock providers: **2 passed**. Covered Saved Replies insertion without auto-send, Arabic replies, notes, assignment, lead linking, automation creation, AI drafts and memory, and desktop/mobile/RTL layouts.
-- Alembic head: `0003_saved_replies`. No production migration was executed.
+- Playwright against a disposable local Flask database and mock providers: **1 Inbox acceptance journey passed**. It covers source context, Saved Reply insertion without auto-send, editing, Send & Close, notes, reminders, assignment, AI drafts and desktop/mobile layouts.
+- Alembic head: `0004_inbox_operations`. No production migration was executed.
 - Changed-file secret scan found no real credentials; local environment files remain ignored. This is not a guarantee against every possible secret format.
 
 Instagram and Claude responses in browser tests were synthetic provider fixtures. Real Meta account eligibility, current API contract, permissions, webhook delivery, and live sending remain external acceptance checks. No CRM production deployment or production data changes were performed.

@@ -12,8 +12,12 @@ import {
   useDebounce,
 } from "../components";
 import { useCRM } from "../context";
+import SavedReplies from "../settings/SavedReplies";
 import type {
   Conversation,
+  ConversationContext,
+  ConversationEvent,
+  ConversationSource,
   Contact,
   Label,
   Message,
@@ -48,11 +52,13 @@ export default function Inbox() {
   );
   const { data: labels } = useData<Label[]>("/labels");
   const filters = [
-    ["all", "All conversations", "كل المحادثات"],
+    ["all", "All", "كل المحادثات"],
+    ["open", "Open chats", "المحادثات المفتوحة"],
     ["unread", "Unread", "غير مقروءة"],
+    ["mine", "Mine", "مسندة إليّ"],
     ["unassigned", "Unassigned", "غير مسندة"],
-    ["mine", "Assigned to me", "مسندة إليّ"],
-    ["attention", "Needs attention", "تحتاج متابعة"],
+    ["reminders", "Reminders", "التذكيرات"],
+    ["due", "Follow-up due", "متابعة مستحقة"],
   ];
   return (
     <div className={"crm-inbox " + (conversationId ? "has-thread" : "")}>
@@ -129,6 +135,21 @@ export default function Inbox() {
               <option value="newest">Newest first</option>
               <option value="oldest">Oldest first</option>
             </select>
+            <select aria-label="Channel" defaultValue="instagram">
+              <option value="instagram">Instagram</option>
+            </select>
+            {(view !== "all" || label || sort !== "newest" || q) && (
+              <button
+                onClick={() => {
+                  setView("all");
+                  setLabel("");
+                  setSort("newest");
+                  setQ("");
+                }}
+              >
+                Reset
+              </button>
+            )}
           </div>
         </header>
         <ErrorBanner message={error} retry={refresh} />
@@ -160,7 +181,13 @@ export default function Inbox() {
                   </div>
                   <p dir="auto">{c.preview || "New conversation"}</p>
                   <div className="crm-row-meta">
-                    <span>◎ Instagram</span>
+                    <span>
+                      ◎ {c.source_type === "instagram_reel_comment"
+                        ? "Reel comment"
+                        : c.source_type === "instagram_post_comment"
+                          ? "Post comment"
+                          : "Instagram"}
+                    </span>
                     {c.assignee_name && (
                       <span>{c.assignee_name.split(" ")[0]}</span>
                     )}
@@ -169,6 +196,9 @@ export default function Inbox() {
                         {l.name}
                       </span>
                     ))}
+                    {c.reminder_at && (
+                      <span className="crm-mini-tag">⏰ {date(c.reminder_at)}</span>
+                    )}
                   </div>
                 </div>
                 {c.unread && (
@@ -241,17 +271,31 @@ function Thread({
     `/conversations/${id}/messages`,
     tick,
   );
+  const { data: context } = useData<ConversationContext>(
+    `/conversations/${id}/context`,
+    tick,
+  );
   const { data: contact } = useData<Contact>(
     conversation ? "/contacts/" + conversation.contact_id : null,
     tick,
   );
   const { data: team } = useData<Staff[]>("/team");
-  const { data: savedReplies } = useData<SavedReply[]>("/saved-replies");
+  const { data: labels } = useData<Label[]>("/labels");
+  const { data: savedReplies } = useData<SavedReply[]>("/saved-replies", tick);
+  const { data: recentReplies } = useData<SavedReply[]>(
+    "/saved-replies?recent=1",
+    tick,
+  );
   const [details, setDetails] = useState(false),
     [failure, setFailure] = useState(""),
     [noteMode, setNoteMode] = useState(false),
     [busy, setBusy] = useState(false),
     [aiOpen, setAiOpen] = useState(false),
+    [emojiOpen, setEmojiOpen] = useState(false),
+    [manageReplies, setManageReplies] = useState(false),
+    [replyTab, setReplyTab] = useState<"recent" | "team">("recent"),
+    [replyPickerOpen, setReplyPickerOpen] = useState(true),
+    [customReminder, setCustomReminder] = useState(""),
     [caret, setCaret] = useState(0),
     [replyIndex, setReplyIndex] = useState(0);
   const draftKey = `crm-draft:${user?.id}:${id}`;
@@ -285,7 +329,7 @@ function Thread({
       setFailure((e as Error).message);
     }
   }
-  async function submit() {
+  async function submit(closeAfterSend = false) {
     if (!draft.trim() || busy || !conversation) return;
     setBusy(true);
     setFailure("");
@@ -302,6 +346,7 @@ function Thread({
         await write(`/conversations/${id}/messages`, {
           text: draft,
           request_id: requestId.current,
+          close_after_send: closeAfterSend,
         });
       setDraft("");
       requestId.current = crypto.randomUUID();
@@ -327,8 +372,13 @@ function Thread({
     ? draft.slice(0, caret).match(/(?:^|\s)\/([a-z0-9_-]*)$/i)
     : null;
   const replyQuery = command?.[1]?.toLocaleLowerCase() || "";
-  const replyMatches = command
-    ? (savedReplies || [])
+  const replyPool = replyQuery
+    ? savedReplies || []
+    : replyTab === "recent" && recentReplies?.length
+      ? recentReplies
+      : savedReplies || [];
+  const replyMatches = command && replyPickerOpen
+    ? replyPool
         .filter((reply) =>
           [reply.shortcut, reply.title].some((value) =>
             value.toLocaleLowerCase().includes(replyQuery),
@@ -353,10 +403,23 @@ function Thread({
     setDraft(next);
     setCaret(nextCaret);
     setReplyIndex(0);
+    setReplyPickerOpen(false);
+    void write(`/saved-replies/${reply.id}/use`, { conversation_id: id }).catch(
+      () => undefined,
+    );
     requestAnimationFrame(() => {
       composer.current?.focus();
       composer.current?.setSelectionRange(nextCaret, nextCaret);
     });
+  }
+  async function setReminder(payload: unknown) {
+    try {
+      await write(`/conversations/${id}/reminders`, payload);
+      setCustomReminder("");
+      refresh();
+    } catch (reason) {
+      setFailure((reason as Error).message);
+    }
   }
   if (!conversation)
     return (
@@ -366,6 +429,21 @@ function Thread({
       </div>
     );
   const allMessages = [...older, ...(page?.items || [])];
+  const displayMessages = context?.source
+    ? allMessages.filter((message) => message.message_type !== "comment")
+    : allMessages;
+  const timeline = [
+    ...displayMessages.map((message) => ({
+      kind: "message" as const,
+      at: message.provider_timestamp || message.created_at,
+      message,
+    })),
+    ...(context?.events || []).map((event) => ({
+      kind: "event" as const,
+      at: event.created_at,
+      event,
+    })),
+  ].sort((left, right) => new Date(left.at).getTime() - new Date(right.at).getTime());
   return (
     <div className={"crm-thread-layout " + (details ? "show-details" : "")}>
       <section className="crm-thread">
@@ -394,6 +472,9 @@ function Thread({
           </button>
         </header>
         <div className="crm-thread-actions">
+          <span className={`crm-conversation-state ${conversation.status.toLowerCase()}`}>
+            {conversation.status === "OPEN" ? "Open" : "Closed"}
+          </span>
           <select
             aria-label="Assigned counselor"
             disabled={!editable}
@@ -413,6 +494,67 @@ function Thread({
                 </option>
               ))}
           </select>
+          <details className="crm-action-menu">
+            <summary>Labels</summary>
+            <div>
+              {labels
+                ?.filter((item) => !item.archived)
+                .map((item) => {
+                  const selected = contact?.labels?.some((label) => label.id === item.id);
+                  return (
+                    <label key={item.id}>
+                      <input
+                        type="checkbox"
+                        checked={!!selected}
+                        disabled={!editable}
+                        onChange={() => {
+                          if (!contact) return;
+                          void write(
+                            `/contacts/${contact.id}/labels/${item.id}`,
+                            {},
+                            selected ? "DELETE" : "PUT",
+                          )
+                            .then(refresh)
+                            .catch((reason) => setFailure(reason.message));
+                        }}
+                      />
+                      <i style={{ background: item.color }} /> {item.name}
+                    </label>
+                  );
+                })}
+            </div>
+          </details>
+          <details className="crm-action-menu">
+            <summary>⏰ Reminder</summary>
+            <div>
+              {[
+                ["later_today", "Later today"],
+                ["tomorrow", "Tomorrow"],
+                ["three_days", "In 3 days"],
+                ["next_week", "Next week"],
+              ].map(([preset, title]) => (
+                <button key={preset} disabled={!editable} onClick={() => setReminder({ preset })}>
+                  {title}
+                </button>
+              ))}
+              <label>
+                Pick date & time
+                <input
+                  type="datetime-local"
+                  value={customReminder}
+                  onChange={(event) => setCustomReminder(event.target.value)}
+                />
+              </label>
+              <button
+                disabled={!editable || !customReminder}
+                onClick={() =>
+                  setReminder({ remind_at: new Date(customReminder).toISOString() })
+                }
+              >
+                Set custom reminder
+              </button>
+            </div>
+          </details>
           <button
             disabled={!editable}
             className={
@@ -444,6 +586,11 @@ function Thread({
           >
             {conversation.status === "OPEN" ? "Close" : "Reopen"}
           </button>
+          {context?.reminders?.find((reminder) => reminder.status === "OPEN") && (
+            <span className="crm-active-reminder">
+              ⏰ {date(context.reminders.find((reminder) => reminder.status === "OPEN")?.remind_at)}
+            </span>
+          )}
         </div>
         <ErrorBanner message={failure || error} retry={refresh} />
         <div className="crm-messages" ref={list}>
@@ -452,35 +599,43 @@ function Thread({
               Load earlier messages
             </button>
           )}
-          {allMessages.map((m, index) => (
-            <div key={m.id}>
+          {context?.source && <SourceCard source={context.source} />}
+          {timeline.map((item, index) => (
+            <div key={`${item.kind}-${item.kind === "message" ? item.message.id : item.event.id}`}>
               {(!index ||
-                allMessages[index - 1].created_at.slice(0, 10) !==
-                  m.created_at.slice(0, 10)) && (
+                timeline[index - 1].at.slice(0, 10) !== item.at.slice(0, 10)) && (
                 <div className="crm-date-separator">
-                  {new Date(m.created_at).toLocaleDateString(undefined, {
+                  {new Date(item.at).toLocaleDateString(undefined, {
                     month: "long",
                     day: "numeric",
                   })}
                 </div>
               )}
+              {item.kind === "event" ? (
+                <SystemEventRow event={item.event} />
+              ) : (
               <article
                 className={
                   "crm-message " +
-                  (m.direction === "OUTBOUND" ? "outbound" : "inbound")
+                  (item.message.direction === "OUTBOUND" ? "outbound" : "inbound")
                 }
               >
-                {m.message_type === "comment" && (
-                  <small>Instagram comment</small>
-                )}
-                {m.sender_type === "AUTOMATION" && <small>Automation</small>}
-                <p dir="auto">{m.text}</p>
-                {m.attachments.map((a, i) => (
+                {item.message.sender_type === "AUTOMATION" && <small>Automation</small>}
+                <p dir="auto">{item.message.text}</p>
+                {item.message.attachments.map((a, i) => (
                   <div className="crm-attachment" key={i}>
                     {a.url && a.url.startsWith("https://") ? (
-                      <a href={a.url} target="_blank" rel="noopener noreferrer">
-                        Open {a.type} ↗
-                      </a>
+                      a.type === "image" ? (
+                        <img src={a.url} alt="Instagram attachment" loading="lazy" />
+                      ) : a.type === "video" ? (
+                        <video src={a.url} controls preload="metadata" />
+                      ) : a.type === "audio" ? (
+                        <audio src={a.url} controls preload="metadata" />
+                      ) : (
+                        <a href={a.url} target="_blank" rel="noopener noreferrer">
+                          Open {a.type} ↗
+                        </a>
+                      )
                     ) : (
                       <span>Attachment unavailable</span>
                     )}
@@ -489,31 +644,50 @@ function Thread({
                 <footer>
                   <time dir="ltr">
                     {new Date(
-                      m.provider_timestamp || m.created_at,
+                      item.message.provider_timestamp || item.message.created_at,
                     ).toLocaleTimeString([], {
                       hour: "2-digit",
                       minute: "2-digit",
                     })}
                   </time>
-                  {m.direction === "OUTBOUND" && (
+                  {item.message.direction === "OUTBOUND" && (
                     <span
                       className={
-                        ["FAILED", "UNCERTAIN"].includes(m.status)
+                        ["FAILED", "UNCERTAIN"].includes(item.message.status)
                           ? "crm-send-error"
                           : ""
                       }
                     >
-                      {m.status.toLowerCase()}
+                      {item.message.status.toLowerCase()}
                     </span>
                   )}
                 </footer>
-                {m.safe_error && (
+                {item.message.safe_error && (
                   <div role="status" className="crm-message-error">
-                    {m.safe_error}
+                    {item.message.safe_error}
+                    {item.message.status === "FAILED" && (
+                      <button
+                        onClick={() =>
+                          write(`/conversations/${id}/messages/${item.message.id}/retry`, {})
+                            .then(refresh)
+                            .catch((reason) => setFailure(reason.message))
+                        }
+                      >
+                        Retry
+                      </button>
+                    )}
                   </div>
                 )}
               </article>
+              )}
             </div>
+          ))}
+          {contact?.notes?.slice().reverse().map((note) => (
+            <article className="crm-internal-note" key={`note-${note.id}`}>
+              <small>INTERNAL NOTE · TEAM ONLY</small>
+              <p dir="auto">{note.text}</p>
+              <footer>{note.author_name} · {date(note.created_at)}</footer>
+            </article>
           ))}
         </div>
         {editable ? (
@@ -527,6 +701,7 @@ function Thread({
               </button>
               {!noteMode && (
                 <button
+                  title="AI tools"
                   className={aiOpen ? "active" : ""}
                   onClick={() => setAiOpen((value) => !value)}
                 >
@@ -537,12 +712,12 @@ function Thread({
                 className={noteMode ? "active" : ""}
                 onClick={() => setNoteMode(true)}
               >
-                {ar ? "ملاحظة خاصة" : "Private note"}
+                {ar ? "ملاحظة داخلية" : "Internal Note"}
               </button>
               <span>
                 {noteMode
-                  ? "Only visible to your team"
-                  : "Instagram direct message"}
+                  ? "TEAM ONLY · Never sent to Instagram"
+                  : "Send to Instagram"}
               </span>
             </div>
             {!noteMode && conversation.send_blocked_reason && (
@@ -562,12 +737,35 @@ function Thread({
                 }}
               />
             )}
-            {!!replyMatches.length && (
+            {command && replyPickerOpen && (
               <div
                 className="crm-saved-reply-menu"
                 role="listbox"
                 aria-label="Saved replies"
               >
+                <header>
+                  <div>
+                    <button
+                      className={replyTab === "recent" ? "active" : ""}
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        setReplyTab("recent");
+                      }}
+                    >
+                      Recent
+                    </button>
+                    <button
+                      className={replyTab === "team" ? "active" : ""}
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        setReplyTab("team");
+                      }}
+                    >
+                      Team replies
+                    </button>
+                  </div>
+                  <small>↑ ↓ navigate · Enter select · Esc close</small>
+                </header>
                 {replyMatches.map((reply, index) => (
                   <button
                     key={reply.id}
@@ -583,6 +781,36 @@ function Thread({
                     <strong>/{reply.shortcut}</strong>
                     <span>{reply.title}</span>
                     <small dir="auto">{reply.content}</small>
+                  </button>
+                ))}
+                {!replyMatches.length && (
+                  <p className="crm-saved-reply-empty">No saved replies found.</p>
+                )}
+                <footer>
+                  <button
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                      setManageReplies(true);
+                      setReplyPickerOpen(false);
+                    }}
+                  >
+                    Create or manage saved replies
+                  </button>
+                </footer>
+              </div>
+            )}
+            {!noteMode && emojiOpen && (
+              <div className="crm-emoji-picker" aria-label="Emoji picker">
+                {["👍", "😊", "🎓", "✅", "🙏", "📚"].map((emoji) => (
+                  <button
+                    key={emoji}
+                    title={`Insert ${emoji}`}
+                    onClick={() => {
+                      setDraft((value) => value + emoji);
+                      setEmojiOpen(false);
+                    }}
+                  >
+                    {emoji}
                   </button>
                 ))}
               </div>
@@ -603,6 +831,7 @@ function Thread({
                 setDraft(e.target.value);
                 setCaret(e.target.selectionStart);
                 setReplyIndex(0);
+                setReplyPickerOpen(true);
               }}
               onClick={(e) => setCaret(e.currentTarget.selectionStart)}
               onKeyUp={(e) => setCaret(e.currentTarget.selectionStart)}
@@ -628,25 +857,52 @@ function Thread({
                   chooseReply(replyMatches[replyIndex]);
                   return;
                 }
+                if (e.key === "Escape" && command) {
+                  e.preventDefault();
+                  setReplyPickerOpen(false);
+                  return;
+                }
                 if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
                   e.preventDefault();
-                  void submit();
+                  void submit(false);
                 }
               }}
             />
             <footer>
-              <small>Ctrl / ⌘ + Enter to {noteMode ? "save" : "send"}</small>
-              <button
-                className="crm-primary"
-                disabled={
-                  busy ||
-                  !draft.trim() ||
-                  (!noteMode && !!conversation.send_blocked_reason)
-                }
-                onClick={submit}
-              >
-                {busy ? "Saving…" : noteMode ? "Save note" : "Send reply ↗"}
-              </button>
+              <div className="crm-composer-tools">
+                {!noteMode && (
+                  <button
+                    title="Insert emoji"
+                    onClick={() => setEmojiOpen((value) => !value)}
+                  >
+                    😊
+                  </button>
+                )}
+                <small>
+                  {noteMode ? "Internal note · team only" : "Type / for saved replies"}
+                </small>
+              </div>
+              <div className="crm-send-actions">
+                <button
+                  className="crm-primary"
+                  disabled={
+                    busy ||
+                    !draft.trim() ||
+                    (!noteMode && !!conversation.send_blocked_reason)
+                  }
+                  onClick={() => submit(false)}
+                >
+                  {busy ? "Saving…" : noteMode ? "Save internal note" : "Send"}
+                </button>
+                {!noteMode && (
+                  <button
+                    disabled={busy || !draft.trim() || !!conversation.send_blocked_reason}
+                    onClick={() => submit(true)}
+                  >
+                    Send & Close
+                  </button>
+                )}
+              </div>
             </footer>
           </div>
         ) : (
@@ -661,6 +917,49 @@ function Thread({
         </button>
         <ContactSummary contact={contact} conversation={conversation} />
       </div>
+      {manageReplies && (
+        <div className="crm-modal-backdrop" role="dialog" aria-modal="true" aria-label="Manage saved replies">
+          <div className="crm-modal">
+            <button className="crm-modal-close" onClick={() => { setManageReplies(false); refresh(); }}>
+              Close ×
+            </button>
+            <SavedReplies />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SourceCard({ source }: { source: ConversationSource }) {
+  const reel = source.source_type === "instagram_reel_comment";
+  const post = source.source_type === "instagram_post_comment";
+  return (
+    <article className="crm-source-card">
+      {source.thumbnail_url?.startsWith("https://") && (
+        <img src={source.thumbnail_url} alt="Instagram source" loading="lazy" />
+      )}
+      <div>
+        <small>{reel ? "Started from an Instagram Reel" : post ? "Started from an Instagram post" : "Started on Instagram"}</small>
+        {source.caption && <p dir="auto">{source.caption}</p>}
+        {source.original_comment && (
+          <blockquote dir="auto">“{source.original_comment}”</blockquote>
+        )}
+        <footer>
+          {source.keyword && <span>Keyword: {source.keyword}</span>}
+          {source.automation_name && <span>Automation: {source.automation_name}</span>}
+          <time>{date(source.occurred_at)}</time>
+        </footer>
+      </div>
+    </article>
+  );
+}
+
+function SystemEventRow({ event }: { event: ConversationEvent }) {
+  return (
+    <div className="crm-system-event">
+      <span>{event.text}</span>
+      <time>{date(event.created_at)}</time>
     </div>
   );
 }

@@ -31,6 +31,9 @@ def register_crm(app, engine_provider):
     from .conversations import api as conversations_api
 
     app.register_blueprint(conversations_api)
+    from .inbox import api as inbox_api
+
+    app.register_blueprint(inbox_api)
     from .automations import api as automations_api
 
     app.register_blueprint(automations_api)

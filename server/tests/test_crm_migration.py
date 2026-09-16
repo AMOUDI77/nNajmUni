@@ -27,9 +27,15 @@ def test_crm_upgrade_preserves_legacy_records_and_downgrade(tmp_path, monkeypatc
         )
         assert (
             conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-            == "0003_saved_replies"
+            == "0004_inbox_operations"
         )
     assert "saved_replies" in inspect(engine).get_table_names()
+    assert {
+        "conversation_events",
+        "conversation_reminders",
+        "conversation_sources",
+        "saved_reply_usage",
+    }.issubset(inspect(engine).get_table_names())
     command.downgrade(cfg, "0002_crm_v1")
     assert "saved_replies" not in inspect(engine).get_table_names()
     assert "staff_users" in inspect(engine).get_table_names()

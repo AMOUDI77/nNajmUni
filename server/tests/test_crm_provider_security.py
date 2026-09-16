@@ -12,6 +12,7 @@ from crm.schema_v1 import (
     contacts,
     webhook_events,
 )
+from crm.schema_v3 import conversation_sources
 from integrations.instagram.client import encrypt, decrypt, is_mock, ProviderError
 from test_crm_auth import crm_client, login
 from test_crm_ingest import send
@@ -78,7 +79,11 @@ def test_comment_private_reply_waits_for_user_dm(crm_client, monkeypatch):
                         "value": {
                             "id": "comment-1",
                             "from": {"id": "prospect-1", "username": "Student"},
-                            "media": {"id": "reel-1"},
+                            "media": {
+                                "id": "reel-1",
+                                "media_product_type": "REELS",
+                                "caption": "Study in Malaysia",
+                            },
                             "text": "ماليزيا",
                         },
                     }
@@ -102,6 +107,10 @@ def test_comment_private_reply_waits_for_user_dm(crm_client, monkeypatch):
         assert (
             conn.execute(select(conversations.c.last_inbound_at)).scalar_one() is None
         )
+        source = conn.execute(select(conversation_sources)).mappings().one()
+        assert source["source_type"] == "instagram_reel_comment"
+        assert source["keyword"] == "ماليزيا"
+        assert source["automation_name"] == "Reel inquiry"
     assert (
         crm_client.post(
             "/api/crm/conversations/1/messages",

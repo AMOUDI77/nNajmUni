@@ -425,6 +425,64 @@
   font-size: 10px;
   padding: 5px 8px;
 }
+.crm-action-menu {
+  position: relative;
+  font-size: 10px;
+}
+.crm-action-menu summary {
+  cursor: pointer;
+  list-style: none;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 5px 8px;
+  background: white;
+}
+.crm-action-menu > div {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 5px);
+  inset-inline-start: 0;
+  width: 220px;
+  display: grid;
+  gap: 5px;
+  padding: 10px;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  box-shadow: 0 12px 30px #17213b1f;
+}
+.crm-action-menu label {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+}
+.crm-action-menu label i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+.crm-active-reminder {
+  color: #825b12;
+  background: #fff6dd;
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 10px;
+}
+.crm-conversation-state {
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.crm-conversation-state.open {
+  color: #267052;
+  background: #eaf8f1;
+}
+.crm-conversation-state.closed {
+  color: #657087;
+  background: #eef0f4;
+}
 .crm-takeover.active {
   background: #fff4db;
   color: #8d6310;
@@ -487,6 +545,91 @@
 .crm-attachment {
   margin-top: 8px;
 }
+.crm-attachment img,
+.crm-attachment video {
+  display: block;
+  max-width: min(320px, 100%);
+  max-height: 330px;
+  border-radius: 8px;
+}
+.crm-attachment audio {
+  max-width: 100%;
+}
+.crm-source-card {
+  display: flex;
+  gap: 12px;
+  max-width: 560px;
+  margin: 2px auto 18px;
+  padding: 12px;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.crm-source-card img {
+  width: 74px;
+  height: 92px;
+  object-fit: cover;
+  border-radius: 7px;
+}
+.crm-source-card > div {
+  min-width: 0;
+  flex: 1;
+}
+.crm-source-card small,
+.crm-source-card footer,
+.crm-system-event {
+  color: var(--muted);
+  font-size: 10px;
+}
+.crm-source-card p,
+.crm-source-card blockquote {
+  margin: 5px 0;
+  font-size: 12px;
+}
+.crm-source-card blockquote {
+  padding-inline-start: 9px;
+  border-inline-start: 2px solid #dfe4f5;
+}
+.crm-source-card footer {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.crm-source-card footer span {
+  background: #f3f5fb;
+  border-radius: 5px;
+  padding: 3px 6px;
+}
+.crm-system-event {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 9px auto;
+}
+.crm-system-event span {
+  background: #f2f4f8;
+  border-radius: 999px;
+  padding: 4px 9px;
+}
+.crm-internal-note {
+  width: min(520px, 88%);
+  margin: 12px auto;
+  padding: 11px 13px;
+  background: #fff8e8;
+  border: 1px solid #ead7a8;
+  border-radius: 9px;
+}
+.crm-internal-note small,
+.crm-internal-note footer {
+  color: #8b6b2d;
+  font-size: 9px;
+  font-weight: 700;
+}
+.crm-internal-note p {
+  margin: 5px 0;
+  white-space: pre-wrap;
+  font-size: 12px;
+}
 .crm-composer {
   position: relative;
   margin: 12px 20px 20px;
@@ -534,6 +677,54 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.crm-saved-reply-menu > header,
+.crm-saved-reply-menu > footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px;
+}
+.crm-saved-reply-menu > header div {
+  display: flex;
+}
+.crm-saved-reply-menu > header button,
+.crm-saved-reply-menu > footer button {
+  display: block;
+  width: auto;
+}
+.crm-saved-reply-menu > header button.active {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.crm-saved-reply-empty {
+  padding: 16px 10px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.crm-emoji-picker {
+  position: absolute;
+  z-index: 20;
+  bottom: 47px;
+  inset-inline-start: 12px;
+  display: flex;
+  gap: 4px;
+  padding: 7px;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px #17213b1a;
+}
+.crm-emoji-picker button {
+  border: 0;
+  background: transparent;
+  font-size: 18px;
+}
+.crm-composer-tools,
+.crm-send-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
 }
 .crm-composer-tabs {
   display: flex;
@@ -584,6 +775,58 @@
 }
 .crm-composer.note-mode textarea {
   background: #fffaf0;
+}
+.crm-copilot {
+  margin: 10px;
+  padding: 12px;
+  border: 1px solid #dfe4fa;
+  border-radius: 9px;
+  background: #f8f9ff;
+}
+.crm-copilot > header,
+.crm-copilot-actions,
+.crm-copilot > footer {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.crm-copilot > header {
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.crm-copilot button {
+  font-size: 10px;
+}
+.crm-copilot > p {
+  margin: 10px 0;
+  white-space: pre-wrap;
+  font-size: 12px;
+}
+.crm-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: #10182f66;
+}
+.crm-modal {
+  position: relative;
+  width: min(900px, 96vw);
+  max-height: 88vh;
+  overflow: auto;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 24px 70px #10182f3d;
+}
+.crm-modal-close {
+  position: sticky;
+  z-index: 2;
+  top: 10px;
+  float: inline-end;
+  margin: 10px;
 }
 .crm-policy {
   color: #936b25;

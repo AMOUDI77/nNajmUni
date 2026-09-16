@@ -21,7 +21,11 @@ def run_once(engine):
         elif job["kind"] == "send_message":
             from crm.messaging import deliver
 
-            deliver(engine, job["payload"]["message_id"])
+            deliver(
+                engine,
+                job["payload"]["message_id"],
+                job["payload"].get("close_after_send", False),
+            )
         elif job["kind"] == "ai_suggestion":
             from crm.ai import generate
 
