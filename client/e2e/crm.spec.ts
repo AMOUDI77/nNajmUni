@@ -30,6 +30,7 @@ test("counselor completes the Inbox-first daily workflow", async ({ page }) => {
   await expect(composer).toContainText("student visa process");
   expect(await page.locator(".crm-message.outbound").count()).toBe(before);
   await composer.fill((await composer.inputValue()) + " I will also send the exact checklist.");
+  await page.getByLabel("More send options").click();
   await page.getByRole("button", { name: "Send & Close" }).click();
   await expect(page.locator(".crm-message.outbound").last()).toContainText("sent", { timeout: 20000 });
   await expect(page.getByRole("button", { name: "Reopen" })).toBeVisible({ timeout: 20000 });
@@ -47,7 +48,7 @@ test("counselor completes the Inbox-first daily workflow", async ({ page }) => {
   await page.getByLabel("Assigned counselor").selectOption({ label: "Demo Counselor" });
 
   await page.getByRole("button", { name: "Reply" }).click();
-  await page.getByRole("button", { name: "✦ AI" }).click();
+  await page.getByLabel("Open AI tools").click();
   await page.getByRole("button", { name: "Suggest reply" }).click();
   await expect(page.getByRole("button", { name: "Use draft" })).toBeVisible({ timeout: 20000 });
   await page.getByRole("button", { name: "Use draft" }).click();

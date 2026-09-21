@@ -80,6 +80,56 @@ def test_auth_csrf_logout_and_audit(crm_client):
         assert actions == ["auth.login", "auth.logout"]
 
 
+def test_production_session_cookie_is_secure_for_cross_subdomain_requests(
+    crm_client, monkeypatch
+):
+    monkeypatch.setenv("CRM_ENV", "production")
+    monkeypatch.setenv("RENDER", "true")
+    response = crm_client.post(
+        "/api/crm/auth/login",
+        json={"email": "owner@example.test", "password": "a-long-test-password"},
+        headers={"Origin": "http://localhost:5173"},
+    )
+    assert response.status_code == 200
+    cookie = response.headers["Set-Cookie"]
+    assert cookie.startswith("__Host-najmuni_crm=")
+    assert "Secure" in cookie
+    assert "HttpOnly" in cookie
+    assert "SameSite=Lax" in cookie
+    assert "Path=/" in cookie
+    assert "Domain=" not in cookie
+
+
+def test_crm_cors_allows_credentialed_auth_and_preflight(crm_client):
+    origin = "http://localhost:5173"
+    response = crm_client.get("/api/crm/auth/me", headers={"Origin": origin})
+    assert response.status_code == 401
+    assert response.headers["Access-Control-Allow-Origin"] == origin
+    assert response.headers["Access-Control-Allow-Credentials"] == "true"
+
+    preflight = crm_client.options(
+        "/api/crm/auth/login",
+        headers={
+            "Origin": origin,
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type,x-csrf-token",
+        },
+    )
+    assert preflight.status_code == 200
+    assert preflight.headers["Access-Control-Allow-Origin"] == origin
+    assert preflight.headers["Access-Control-Allow-Credentials"] == "true"
+    assert "x-csrf-token" in preflight.headers["Access-Control-Allow-Headers"].lower()
+
+    denied = crm_client.options(
+        "/api/crm/auth/login",
+        headers={
+            "Origin": "https://evil.example",
+            "Access-Control-Request-Method": "POST",
+        },
+    )
+    assert "Access-Control-Allow-Origin" not in denied.headers
+
+
 def test_roles_revocation_and_expiry(crm_client):
     headers = login(crm_client, "viewer")
     assert crm_client.post("/api/crm/team", json={}, headers=headers).status_code == 403
