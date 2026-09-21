@@ -11,6 +11,7 @@ const Institutes      = lazy(() => import('./pages/Institutes'));
 const Programs        = lazy(() => import('./pages/Programs'));
 const Admin           = lazy(() => import('./pages/Admin'));
 const Students        = lazy(() => import('./pages/Students'));
+const CRM             = lazy(() => import('./crm/CRM'));
 const StudyPlan       = lazy(() => import('./features/study-plan/StudyPlanFeature'));
 
 function PageLoader() {
@@ -40,7 +41,7 @@ function RouteScroller() {
 
 export default function App() {
   const { pathname } = useLocation();
-  const isAdmin = pathname === '/admin' || pathname === '/students' || pathname === '/student';
+  const isAdmin = pathname === '/admin' || pathname === '/students' || pathname === '/student' || pathname === '/crm' || pathname.startsWith('/crm/');
 
   return (
     <>
@@ -57,6 +58,7 @@ export default function App() {
           <Route path="/admin"            element={<Admin />} />
           <Route path="/student"          element={<Navigate to="/students" replace />} />
           <Route path="/students"         element={<Students />} />
+          <Route path="/crm/*"            element={<CRM />} />
         </Routes>
       </Suspense>
       {!isAdmin && <Footer />}
