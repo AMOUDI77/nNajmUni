@@ -10,14 +10,15 @@ const blank: SavedReply = {
   shortcut: "",
   content: "",
   status: "ACTIVE",
+  pinned: false,
 };
 
-export default function SavedReplies() {
+export default function SavedReplies({ startNew = false }: { startNew?: boolean }) {
   const { user } = useCRM();
   const editable = user?.role !== "VIEWER";
   const [tick, setTick] = useState(0);
   const [query, setQuery] = useState("");
-  const [editing, setEditing] = useState<SavedReply | null>(null);
+  const [editing, setEditing] = useState<SavedReply | null>(startNew ? blank : null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const {
@@ -132,6 +133,16 @@ export default function SavedReplies() {
             Optional variables: {"{{first_name}}"}, {"{{university}}"},{" "}
             {"{{program}}"}
           </small>
+          <label className="crm-pin-reply">
+            <input
+              type="checkbox"
+              checked={editing.pinned}
+              onChange={(event) =>
+                setEditing({ ...editing, pinned: event.target.checked })
+              }
+            />
+            Pin in the Inbox picker
+          </label>
           <footer>
             <button onClick={() => setEditing(null)}>Cancel</button>
             <button
@@ -161,12 +172,25 @@ export default function SavedReplies() {
               <div>
                 <strong>{reply.title}</strong>
                 <code>/{reply.shortcut}</code>
+                {reply.pinned && <span className="crm-tag">Pinned</span>}
                 <span className="crm-tag">{reply.status.toLowerCase()}</span>
                 <p dir="auto">{reply.content}</p>
               </div>
               {editable && (
                 <div className="crm-row-actions">
                   <button onClick={() => setEditing(reply)}>Edit</button>
+                  <button
+                    disabled={busy}
+                    onClick={() =>
+                      action(
+                        `/saved-replies/${reply.id}`,
+                        { pinned: !reply.pinned },
+                        "PATCH",
+                      )
+                    }
+                  >
+                    {reply.pinned ? "Unpin" : "Pin"}
+                  </button>
                   <button
                     disabled={busy}
                     onClick={() =>

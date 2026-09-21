@@ -27,7 +27,7 @@ def test_crm_upgrade_preserves_legacy_records_and_downgrade(tmp_path, monkeypatc
         )
         assert (
             conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-            == "0004_inbox_operations"
+            == "0005_composer_polish"
         )
     assert "saved_replies" in inspect(engine).get_table_names()
     assert {

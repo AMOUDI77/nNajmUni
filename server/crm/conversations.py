@@ -1,12 +1,16 @@
-from flask import Blueprint, g, jsonify, request
+import os
+import re
+from flask import Blueprint, g, jsonify, request, send_file
 from sqlalchemy import or_, select, update
 from werkzeug.exceptions import BadRequest, NotFound
 
 from .auth import require_staff
+from .auth import development
 from .common import audit, body, engine, now, output, page_limit, query_id, string
 from .contacts import EDIT
 from .inbox import add_event
 from .messaging import policy_error, queue_message
+from .media_storage import media_store
 from .schema_v1 import (
     assignments,
     contact_labels,
@@ -24,6 +28,50 @@ from .schema_v3 import conversation_reminders, conversation_sources
 from .search import CONTACT_SEARCH, IDENTITY_SEARCH, MESSAGE_SEARCH, text_matches
 
 api = Blueprint("crm_conversations", __name__, url_prefix="/api/crm")
+VOICE_TYPES = {
+    "audio/webm": "webm",
+    "audio/ogg": "ogg",
+    "audio/mp4": "m4a",
+    "audio/mpeg": "mp3",
+    "audio/wav": "wav",
+    "audio/x-wav": "wav",
+}
+VOICE_NAME = re.compile(r"^[0-9a-f]{32}\.(webm|ogg|m4a|mp3|wav)$")
+MAX_VOICE_BYTES = 25 * 1024 * 1024
+MEDIA_NAME = re.compile(r"^[0-9a-f]{32}\.(jpg|png|gif|webp|pdf|webm|ogg|m4a|mp3|wav)$")
+MAX_IMAGE_BYTES = 8 * 1024 * 1024
+MAX_FILE_BYTES = 10 * 1024 * 1024
+
+
+def voice_delivery_supported():
+    return os.environ.get("META_PROVIDER_MODE") == "mock" and development()
+
+
+def channel_capabilities():
+    mock = os.environ.get("META_PROVIDER_MODE") == "mock" and development()
+    return {
+        "canSendText": True,
+        "canSendImage": mock,
+        "canSendAttachment": mock,
+        "canSendAudio": mock,
+        "canSendVoiceRecording": mock,
+        "canSendTemplate": False,
+        "canSendQuickReplies": False,
+    }
+
+
+def detect_media(content):
+    if content.startswith(b"\xff\xd8\xff"):
+        return "image", "image/jpeg", "jpg"
+    if content.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image", "image/png", "png"
+    if content[:6] in (b"GIF87a", b"GIF89a"):
+        return "image", "image/gif", "gif"
+    if content.startswith(b"RIFF") and content[8:12] == b"WEBP":
+        return "image", "image/webp", "webp"
+    if content.startswith(b"%PDF-"):
+        return "file", "application/pdf", "pdf"
+    return None
 
 
 def conversation(conn, vid, lock=False):
@@ -204,6 +252,7 @@ def detail(vid):
             .one()
         )
         result["send_blocked_reason"] = policy_error(result, account)
+        result["capabilities"] = channel_capabilities()
         result["username"] = identity["username"]
     return output(result)
 
@@ -253,6 +302,142 @@ def send(vid):
             close_after_send=close_after_send,
         )
     return output({"id": mid, "status": "QUEUED"}, 202)
+
+
+@api.post("/conversations/<int:vid>/audio")
+@require_staff(*EDIT)
+def send_voice(vid):
+    if not voice_delivery_supported():
+        raise BadRequest(
+            "Recorded voice delivery is not enabled for this Instagram connection"
+        )
+    # Keep the application's 1 MB default for every other endpoint while
+    # permitting a bounded multipart recording on this authenticated route.
+    request.max_content_length = MAX_VOICE_BYTES + 1024 * 1024
+    request_id = (request.form.get("request_id") or "").strip()
+    if not request_id or len(request_id) > 100:
+        raise BadRequest("Invalid send identifier")
+    close_value = request.form.get("close_after_send", "false")
+    if close_value not in ("true", "false"):
+        raise BadRequest("Invalid send action")
+    try:
+        duration_ms = int(request.form.get("duration_ms", "0"))
+    except ValueError:
+        raise BadRequest("Invalid recording duration") from None
+    if not 0 < duration_ms <= 10 * 60 * 1000:
+        raise BadRequest("Invalid recording duration")
+    upload = request.files.get("audio")
+    mime = (upload.mimetype if upload else "").split(";", 1)[0].lower()
+    if not upload or mime not in VOICE_TYPES:
+        raise BadRequest("This audio recording format is not supported")
+    key = f"staff:{g.staff['id']}:{request_id}"
+    with engine().connect() as conn:
+        previous = (
+            conn.execute(select(messages).where(messages.c.dedupe_key == key))
+            .mappings()
+            .first()
+        )
+    if previous:
+        if previous["conversation_id"] != vid or previous["message_type"] != "audio":
+            raise BadRequest(
+                "This send identifier was already used for a different message"
+            )
+        return output({"id": previous["id"], "status": previous["status"]}, 202)
+    content = upload.read(MAX_VOICE_BYTES + 1)
+    if not content or len(content) > MAX_VOICE_BYTES:
+        raise BadRequest("Voice recordings must be smaller than 25 MB")
+    store = media_store()
+    stored = store.save(content, VOICE_TYPES[mime])
+    try:
+        with engine().begin() as conn:
+            mid = queue_message(
+                conn,
+                vid,
+                "Voice message",
+                key,
+                g.staff["id"],
+                close_after_send=close_value == "true",
+                message_type="audio",
+                attachments=[
+                    {
+                        "type": "audio",
+                        "url": stored.staff_url,
+                        "duration_ms": duration_ms,
+                        "mime_type": mime,
+                    }
+                ],
+            )
+    except Exception:
+        store.remove(stored.key)
+        raise
+    return output({"id": mid, "status": "QUEUED"}, 202)
+
+
+@api.post("/conversations/<int:vid>/media")
+@require_staff(*EDIT)
+def send_media(vid):
+    capabilities = channel_capabilities()
+    if not (capabilities["canSendImage"] or capabilities["canSendAttachment"]):
+        raise BadRequest("Media delivery is not enabled for this Instagram connection")
+    request.max_content_length = MAX_FILE_BYTES + 1024 * 1024
+    request_id = (request.form.get("request_id") or "").strip()
+    if not request_id or len(request_id) > 100:
+        raise BadRequest("Invalid send identifier")
+    close_value = request.form.get("close_after_send", "false")
+    if close_value not in ("true", "false"):
+        raise BadRequest("Invalid send action")
+    text = (request.form.get("text") or "").strip()
+    if len(text) > 1000:
+        raise BadRequest("Message is too long")
+    upload = request.files.get("file")
+    if not upload:
+        raise BadRequest("Choose a file to send")
+    content = upload.read(MAX_FILE_BYTES + 1)
+    if not content or len(content) > MAX_FILE_BYTES:
+        raise BadRequest("Files must be smaller than 10 MB")
+    detected = detect_media(content)
+    if not detected:
+        raise BadRequest("This file type cannot be sent through Instagram")
+    media_type, mime, extension = detected
+    if media_type == "image" and len(content) > MAX_IMAGE_BYTES:
+        raise BadRequest("Images must be smaller than 8 MB")
+    key = f"staff:{g.staff['id']}:{request_id}"
+    with engine().connect() as conn:
+        previous = conn.execute(select(messages).where(messages.c.dedupe_key == key)).mappings().first()
+    if previous:
+        if previous["conversation_id"] != vid or previous["message_type"] != media_type:
+            raise BadRequest("This send identifier was already used for a different message")
+        return output({"id": previous["id"], "status": previous["status"]}, 202)
+    store = media_store()
+    stored = store.save(content, extension)
+    safe_name = re.sub(r"[^A-Za-z0-9._ -]", "_", upload.filename or f"upload.{extension}")[:120]
+    try:
+        with engine().begin() as conn:
+            mid = queue_message(
+                conn, vid, text or ("Image" if media_type == "image" else safe_name), key,
+                g.staff["id"], close_after_send=close_value == "true",
+                message_type=media_type,
+                attachments=[{"type": media_type, "url": stored.staff_url,
+                              "provider_url": stored.provider_url, "mime_type": mime,
+                              "filename": safe_name, "size": len(content)}],
+            )
+    except Exception:
+        store.remove(stored.key)
+        raise
+    return output({"id": mid, "status": "QUEUED"}, 202)
+
+
+@api.get("/media/<filename>")
+@require_staff()
+def voice_media(filename):
+    if not MEDIA_NAME.fullmatch(filename):
+        raise NotFound("Media not found")
+    path = media_store().path(filename)
+    if not path.is_file():
+        raise NotFound("Media not found")
+    response = send_file(path, conditional=True, as_attachment=path.suffix == ".pdf")
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    return response
 
 
 @api.patch("/conversations/<int:vid>")

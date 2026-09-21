@@ -17,8 +17,8 @@ from .schema_v1 import (
     settings,
     webhook_events,
 )
-from .schema_v2 import saved_replies
 from .schema_v3 import saved_reply_usage
+from .schema_v4 import saved_replies
 
 api = Blueprint("crm_settings", __name__, url_prefix="/api/crm")
 SHORTCUT = re.compile(r"^[a-z0-9_-]{1,32}$")
@@ -123,11 +123,15 @@ def saved_reply_values(data):
     status = data.get("status", "ACTIVE")
     if status not in ("ACTIVE", "ARCHIVED"):
         raise BadRequest("Invalid saved reply status")
+    pinned = data.get("pinned", False)
+    if not isinstance(pinned, bool):
+        raise BadRequest("Invalid pinned state")
     return {
         "title": string(data, "title", 100, True),
         "shortcut": shortcut,
         "content": string(data, "content", 4000, True),
         "status": status,
+        "pinned": pinned,
         "updated_by": g.staff["id"],
         "updated_at": now(),
     }

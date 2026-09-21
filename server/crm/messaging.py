@@ -2,7 +2,7 @@
 
 from datetime import timedelta
 
-from integrations.instagram.client import ProviderError, send_message
+from integrations.instagram.client import ProviderError, send_audio, send_media, send_message
 from jobs.queue import enqueue
 from sqlalchemy import select, update
 from werkzeug.exceptions import BadRequest
@@ -38,6 +38,8 @@ def queue_message(
     automated=False,
     comment_id=None,
     close_after_send=False,
+    message_type="text",
+    attachments=None,
 ):
     conv = (
         conn.execute(
@@ -54,7 +56,11 @@ def queue_message(
         .first()
     )
     if previous:
-        if previous["conversation_id"] != vid or previous["text"] != text:
+        if (
+            previous["conversation_id"] != vid
+            or previous["text"] != text
+            or previous["message_type"] != message_type
+        ):
             raise BadRequest(
                 "This send identifier was already used for a different message"
             )
@@ -99,7 +105,8 @@ def queue_message(
             sender_type="AUTOMATION" if automated else "STAFF",
             staff_id=actor,
             text=text,
-            attachments=[],
+            message_type=message_type,
+            attachments=attachments or [],
             private_reply_comment_id=comment_id,
             status="QUEUED",
         )
@@ -197,12 +204,28 @@ def deliver(engine, mid, close_after_send=False):
             )
             return
         try:
-            provider_id = send_message(
-                account,
-                identity["provider_user_id"],
-                msg["text"],
-                msg["private_reply_comment_id"],
-            )
+            if msg["message_type"] == "audio":
+                attachment = next(
+                    (item for item in msg["attachments"] if item.get("type") == "audio"),
+                    None,
+                )
+                if not attachment or not attachment.get("url"):
+                    raise ProviderError("Voice recording is unavailable")
+                provider_id = send_audio(
+                    account, identity["provider_user_id"], attachment["url"]
+                )
+            elif msg["message_type"] in ("image", "file"):
+                attachment = next((item for item in msg["attachments"] if item.get("type") == msg["message_type"]), None)
+                if not attachment or not attachment.get("url"):
+                    raise ProviderError("Attachment is unavailable")
+                provider_id = send_media(account, identity["provider_user_id"], msg["message_type"], attachment)
+            else:
+                provider_id = send_message(
+                    account,
+                    identity["provider_user_id"],
+                    msg["text"],
+                    msg["private_reply_comment_id"],
+                )
         except ProviderError as exc:
             conn.execute(
                 update(messages)

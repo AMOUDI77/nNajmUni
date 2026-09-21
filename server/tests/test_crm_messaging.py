@@ -1,3 +1,5 @@
+import io
+
 import app as application
 from sqlalchemy import select, update
 from crm.schema_v1 import social_accounts, messages, conversations
@@ -102,6 +104,137 @@ def test_takeover_and_assignment(crm_client, monkeypatch):
         ).status_code
         == 400
     )
+
+
+def test_mock_voice_message_upload_delivery_and_idempotency(
+    crm_client, monkeypatch, tmp_path
+):
+    headers = setup_conversation(crm_client, monkeypatch)
+    media = tmp_path / "voice"
+    monkeypatch.setenv("CRM_MEDIA_DIR", str(media))
+
+    def payload():
+        return {
+            "audio": (io.BytesIO(b"mock-webm-audio"), "voice.webm", "audio/webm"),
+            "duration_ms": "18000",
+            "request_id": "voice-request-1",
+            "close_after_send": "false",
+        }
+
+    first = crm_client.post(
+        "/api/crm/conversations/1/audio", data=payload(), headers=headers
+    )
+    repeated = crm_client.post(
+        "/api/crm/conversations/1/audio", data=payload(), headers=headers
+    )
+    assert first.status_code == 202, first.json
+    assert repeated.status_code == 202
+    assert first.json["id"] == repeated.json["id"]
+    assert len(list(media.iterdir())) == 1
+    with application.app.app_context():
+        assert run_once(application.DATABASE_ENGINE)
+    message = crm_client.get("/api/crm/conversations/1/messages").json["items"][-1]
+    assert message["message_type"] == "audio"
+    assert message["status"] == "SENT"
+    assert message["provider_message_id"].startswith("mock-audio-")
+    assert message["attachments"][0]["duration_ms"] == 18000
+    audio = crm_client.get(message["attachments"][0]["url"])
+    assert audio.status_code == 200 and audio.data == b"mock-webm-audio"
+
+
+def test_live_provider_refuses_recorded_voice_without_storing_file(
+    crm_client, monkeypatch, tmp_path
+):
+    headers = setup_conversation(crm_client, monkeypatch)
+    media = tmp_path / "voice"
+    monkeypatch.setenv("CRM_MEDIA_DIR", str(media))
+    monkeypatch.setenv("META_PROVIDER_MODE", "live")
+    response = crm_client.post(
+        "/api/crm/conversations/1/audio",
+        data={
+            "audio": (io.BytesIO(b"audio"), "voice.webm", "audio/webm"),
+            "duration_ms": "1000",
+            "request_id": "live-voice",
+            "close_after_send": "false",
+        },
+        headers=headers,
+    )
+    assert response.status_code == 400
+    assert "not enabled" in response.json["error"]
+    assert not media.exists()
+
+
+def test_mock_image_upload_validates_content_and_preserves_delivery_state(
+    crm_client, monkeypatch, tmp_path
+):
+    headers = setup_conversation(crm_client, monkeypatch)
+    media = tmp_path / "media"
+    monkeypatch.setenv("CRM_MEDIA_DIR", str(media))
+    detail = crm_client.get("/api/crm/conversations/1").json
+    assert detail["capabilities"]["canSendImage"] is True
+    response = crm_client.post(
+        "/api/crm/conversations/1/media",
+        data={
+            "file": (io.BytesIO(b"\x89PNG\r\n\x1a\nmock-image"), "student.png", "image/png"),
+            "text": "Here is the guide",
+            "request_id": "image-request-1",
+            "close_after_send": "false",
+        },
+        headers=headers,
+    )
+    assert response.status_code == 202, response.json
+    with application.app.app_context():
+        assert run_once(application.DATABASE_ENGINE)
+    message = crm_client.get("/api/crm/conversations/1/messages").json["items"][-1]
+    assert message["message_type"] == "image" and message["status"] == "SENT"
+    assert message["attachments"][0]["filename"] == "student.png"
+    downloaded = crm_client.get(message["attachments"][0]["url"])
+    assert downloaded.status_code == 200
+    assert downloaded.headers["X-Content-Type-Options"] == "nosniff"
+
+
+def test_media_upload_rejects_spoofed_and_unsupported_files(
+    crm_client, monkeypatch, tmp_path
+):
+    headers = setup_conversation(crm_client, monkeypatch)
+    monkeypatch.setenv("CRM_MEDIA_DIR", str(tmp_path / "media"))
+    response = crm_client.post(
+        "/api/crm/conversations/1/media",
+        data={
+            "file": (io.BytesIO(b"not really an image"), "attack.png", "image/png"),
+            "request_id": "bad-media",
+            "close_after_send": "false",
+        },
+        headers=headers,
+    )
+    assert response.status_code == 400
+    assert response.json["error"] == "This file type cannot be sent through Instagram"
+    assert not (tmp_path / "media").exists()
+
+
+def test_media_provider_failure_stays_failed_and_does_not_close(
+    crm_client, monkeypatch, tmp_path
+):
+    headers = setup_conversation(crm_client, monkeypatch)
+    monkeypatch.setenv("CRM_MEDIA_DIR", str(tmp_path / "media"))
+    response = crm_client.post(
+        "/api/crm/conversations/1/media",
+        data={
+            "file": (io.BytesIO(b"\x89PNG\r\n\x1a\nmock-image"), "student.png", "image/png"),
+            "request_id": "failed-image",
+            "close_after_send": "true",
+        },
+        headers=headers,
+    )
+    monkeypatch.setattr(
+        "crm.messaging.send_media",
+        lambda *args: (_ for _ in ()).throw(ProviderError("Media rejected")),
+    )
+    with application.app.app_context():
+        assert run_once(application.DATABASE_ENGINE)
+    thread = crm_client.get("/api/crm/conversations/1/messages").json["items"]
+    assert thread[-1]["status"] == "FAILED"
+    assert crm_client.get("/api/crm/conversations/1").json["status"] == "OPEN"
 
 
 def test_send_and_close_waits_for_provider_acceptance(crm_client, monkeypatch):

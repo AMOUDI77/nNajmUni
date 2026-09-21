@@ -13,6 +13,8 @@ import {
 } from "../components";
 import { useCRM } from "../context";
 import SavedReplies from "../settings/SavedReplies";
+import VoiceRecorder, { AudioBubble } from "./VoiceRecorder";
+import MediaComposer, { mediaFromTransfer } from "./MediaComposer";
 import type {
   Conversation,
   ConversationContext,
@@ -293,8 +295,13 @@ function Thread({
     [aiOpen, setAiOpen] = useState(false),
     [emojiOpen, setEmojiOpen] = useState(false),
     [manageReplies, setManageReplies] = useState(false),
-    [replyTab, setReplyTab] = useState<"recent" | "team">("recent"),
-    [replyPickerOpen, setReplyPickerOpen] = useState(true),
+    [newReply, setNewReply] = useState(false),
+    [replyTab, setReplyTab] = useState<"recent" | "pinned" | "team" | "all">("recent"),
+    [replyPickerOpen, setReplyPickerOpen] = useState(false),
+    [replySearch, setReplySearch] = useState(""),
+    [incomingFile, setIncomingFile] = useState<{ file: File; token: string } | null>(null),
+    [lightbox, setLightbox] = useState(""),
+    [dragActive, setDragActive] = useState(false),
     [customReminder, setCustomReminder] = useState(""),
     [caret, setCaret] = useState(0),
     [replyIndex, setReplyIndex] = useState(0);
@@ -307,6 +314,15 @@ function Thread({
   const composer = useRef<HTMLTextAreaElement>(null),
     requestId = useRef(crypto.randomUUID()),
     lastSentText = useRef("");
+  const capabilities = conversation?.capabilities || {
+    canSendText: true,
+    canSendImage: false,
+    canSendAttachment: false,
+    canSendAudio: false,
+    canSendVoiceRecording: false,
+    canSendTemplate: false,
+    canSendQuickReplies: false,
+  };
   useEffect(() => {
     sessionStorage.setItem(draftKey, draft);
   }, [draft, draftKey]);
@@ -371,24 +387,26 @@ function Thread({
   const command = !noteMode
     ? draft.slice(0, caret).match(/(?:^|\s)\/([a-z0-9_-]*)$/i)
     : null;
-  const replyQuery = command?.[1]?.toLocaleLowerCase() || "";
+  const replyQuery = (command?.[1] ?? replySearch).toLocaleLowerCase();
   const replyPool = replyQuery
     ? savedReplies || []
     : replyTab === "recent" && recentReplies?.length
       ? recentReplies
-      : savedReplies || [];
-  const replyMatches = command && replyPickerOpen
+      : replyTab === "pinned"
+        ? (savedReplies || []).filter((reply) => reply.pinned)
+        : savedReplies || [];
+  const replyMatches = replyPickerOpen
     ? replyPool
         .filter((reply) =>
-          [reply.shortcut, reply.title].some((value) =>
+          [reply.shortcut, reply.title, reply.content].some((value) =>
             value.toLocaleLowerCase().includes(replyQuery),
           ),
         )
         .slice(0, 8)
     : [];
   function chooseReply(reply: SavedReply) {
-    if (!contact || !command) return;
-    const start = draft.slice(0, caret).lastIndexOf("/");
+    if (!contact) return;
+    const start = command ? draft.slice(0, caret).lastIndexOf("/") : caret;
     const variables: Record<string, string | undefined> = {
       first_name: contact.display_name.trim().split(/\s+/)[0],
       university: contact.university_interests,
@@ -404,6 +422,7 @@ function Thread({
     setCaret(nextCaret);
     setReplyIndex(0);
     setReplyPickerOpen(false);
+    setReplySearch("");
     void write(`/saved-replies/${reply.id}/use`, { conversation_id: id }).catch(
       () => undefined,
     );
@@ -624,13 +643,16 @@ function Thread({
                 <p dir="auto">{item.message.text}</p>
                 {item.message.attachments.map((a, i) => (
                   <div className="crm-attachment" key={i}>
-                    {a.url && a.url.startsWith("https://") ? (
+                    {a.url &&
+                    (a.url.startsWith("https://") || a.url.startsWith("/api/crm/media/")) ? (
                       a.type === "image" ? (
-                        <img src={a.url} alt="Instagram attachment" loading="lazy" />
+                        <button className="crm-image-attachment" onClick={() => setLightbox(a.url || "")}>
+                          <img src={a.url} alt="Instagram attachment" loading="lazy" />
+                        </button>
                       ) : a.type === "video" ? (
                         <video src={a.url} controls preload="metadata" />
                       ) : a.type === "audio" ? (
-                        <audio src={a.url} controls preload="metadata" />
+                        <AudioBubble url={a.url} durationMs={a.duration_ms} />
                       ) : (
                         <a href={a.url} target="_blank" rel="noopener noreferrer">
                           Open {a.type} ↗
@@ -691,7 +713,7 @@ function Thread({
           ))}
         </div>
         {editable ? (
-          <div className={"crm-composer " + (noteMode ? "note-mode" : "")}>
+          <div className={"crm-composer " + (noteMode ? "note-mode " : "") + (dragActive ? "drag-active" : "")}>
             <div className="crm-composer-tabs">
               <button
                 className={!noteMode ? "active" : ""}
@@ -699,15 +721,6 @@ function Thread({
               >
                 {ar ? "رد" : "Reply"}
               </button>
-              {!noteMode && (
-                <button
-                  title="AI tools"
-                  className={aiOpen ? "active" : ""}
-                  onClick={() => setAiOpen((value) => !value)}
-                >
-                  ✦ AI
-                </button>
-              )}
               <button
                 className={noteMode ? "active" : ""}
                 onClick={() => setNoteMode(true)}
@@ -737,35 +750,63 @@ function Thread({
                 }}
               />
             )}
-            {command && replyPickerOpen && (
+            {!noteMode && replyPickerOpen && (
               <div
                 className="crm-saved-reply-menu"
                 role="listbox"
                 aria-label="Saved replies"
               >
                 <header>
-                  <div>
-                    <button
-                      className={replyTab === "recent" ? "active" : ""}
-                      onMouseDown={(event) => {
-                        event.preventDefault();
-                        setReplyTab("recent");
-                      }}
-                    >
-                      Recent
-                    </button>
-                    <button
-                      className={replyTab === "team" ? "active" : ""}
-                      onMouseDown={(event) => {
-                        event.preventDefault();
-                        setReplyTab("team");
-                      }}
-                    >
-                      Team replies
-                    </button>
-                  </div>
-                  <small>↑ ↓ navigate · Enter select · Esc close</small>
+                  <strong>Saved Replies</strong>
+                  <small>↑ ↓ navigate · Enter insert · Esc close</small>
                 </header>
+                <input
+                  aria-label="Search composer saved replies"
+                  autoFocus={!command}
+                  placeholder="Search saved replies…"
+                  value={command ? command[1] : replySearch}
+                  readOnly={!!command}
+                  onChange={(event) => {
+                    setReplySearch(event.target.value);
+                    setReplyIndex(0);
+                  }}
+                  onKeyDown={(event) => {
+                    if (replyMatches.length && event.key === "ArrowDown") {
+                      event.preventDefault();
+                      setReplyIndex((value) => (value + 1) % replyMatches.length);
+                    } else if (replyMatches.length && event.key === "ArrowUp") {
+                      event.preventDefault();
+                      setReplyIndex((value) => (value - 1 + replyMatches.length) % replyMatches.length);
+                    } else if (replyMatches.length && event.key === "Enter") {
+                      event.preventDefault();
+                      chooseReply(replyMatches[replyIndex]);
+                    } else if (event.key === "Escape") {
+                      event.preventDefault();
+                      setReplyPickerOpen(false);
+                      composer.current?.focus();
+                    }
+                  }}
+                />
+                <nav aria-label="Saved reply categories">
+                  {([
+                    ["recent", "Recently Used"],
+                    ["pinned", "Favorites"],
+                    ["team", "Team Replies"],
+                    ["all", "All Replies"],
+                  ] as const).map(([key, title]) => (
+                    <button
+                      key={key}
+                      className={replyTab === key ? "active" : ""}
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        setReplyTab(key);
+                        setReplyIndex(0);
+                      }}
+                    >
+                      {title}
+                    </button>
+                  ))}
+                </nav>
                 {replyMatches.map((reply, index) => (
                   <button
                     key={reply.id}
@@ -790,11 +831,22 @@ function Thread({
                   <button
                     onMouseDown={(event) => {
                       event.preventDefault();
+                      setNewReply(false);
                       setManageReplies(true);
                       setReplyPickerOpen(false);
                     }}
                   >
-                    Create or manage saved replies
+                    Manage
+                  </button>
+                  <button
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                      setNewReply(true);
+                      setManageReplies(true);
+                      setReplyPickerOpen(false);
+                    }}
+                  >
+                    + New
                   </button>
                 </footer>
               </div>
@@ -815,6 +867,7 @@ function Thread({
                 ))}
               </div>
             )}
+            {dragActive && <div className="crm-drop-target">Drop a supported image or file here</div>}
             <textarea
               ref={composer}
               aria-label={noteMode ? "Private note" : "Reply message"}
@@ -831,7 +884,33 @@ function Thread({
                 setDraft(e.target.value);
                 setCaret(e.target.selectionStart);
                 setReplyIndex(0);
-                setReplyPickerOpen(true);
+                const beforeCaret = e.target.value.slice(0, e.target.selectionStart);
+                if (/(?:^|\s)\/[a-z0-9_-]*$/i.test(beforeCaret)) {
+                  setReplyPickerOpen(true);
+                  setReplySearch("");
+                }
+              }}
+              onPaste={(event) => {
+                if (noteMode) return;
+                const file = Array.from(event.clipboardData.files).find((item) => item.type.startsWith("image/"));
+                if (file) {
+                  event.preventDefault();
+                  setIncomingFile({ file, token: crypto.randomUUID() });
+                }
+              }}
+              onDragOver={(event) => {
+                if (!noteMode) {
+                  event.preventDefault();
+                  setDragActive(true);
+                }
+              }}
+              onDragLeave={() => setDragActive(false)}
+              onDrop={(event) => {
+                if (noteMode) return;
+                event.preventDefault();
+                setDragActive(false);
+                const file = mediaFromTransfer(event.dataTransfer);
+                if (file) setIncomingFile({ file, token: crypto.randomUUID() });
               }}
               onClick={(e) => setCaret(e.currentTarget.selectionStart)}
               onKeyUp={(e) => setCaret(e.currentTarget.selectionStart)}
@@ -857,7 +936,7 @@ function Thread({
                   chooseReply(replyMatches[replyIndex]);
                   return;
                 }
-                if (e.key === "Escape" && command) {
+                if (e.key === "Escape" && replyPickerOpen) {
                   e.preventDefault();
                   setReplyPickerOpen(false);
                   return;
@@ -871,12 +950,53 @@ function Thread({
             <footer>
               <div className="crm-composer-tools">
                 {!noteMode && (
-                  <button
-                    title="Insert emoji"
-                    onClick={() => setEmojiOpen((value) => !value)}
-                  >
-                    😊
-                  </button>
+                  <>
+                    <button
+                      title="Insert emoji"
+                      aria-label="Insert emoji"
+                      onClick={() => setEmojiOpen((value) => !value)}
+                    >
+                      😊
+                    </button>
+                    <button
+                      title="Saved replies"
+                      aria-label="Open saved replies"
+                      className={replyPickerOpen ? "active" : ""}
+                      onClick={() => {
+                        setReplyPickerOpen((value) => !value);
+                        setReplySearch("");
+                        setReplyIndex(0);
+                      }}
+                    >
+                      ⚡
+                    </button>
+                    <MediaComposer
+                      conversationId={id}
+                      capabilities={capabilities}
+                      text={draft}
+                      blockedReason={conversation.send_blocked_reason}
+                      incomingFile={incomingFile}
+                      onSent={() => {
+                        setDraft("");
+                        setIncomingFile(null);
+                        refresh();
+                      }}
+                    />
+                    <VoiceRecorder
+                      conversationId={id}
+                      blockedReason={conversation.send_blocked_reason}
+                      deliverySupported={capabilities.canSendVoiceRecording}
+                      onSent={refresh}
+                    />
+                    <button
+                      title="AI tools"
+                      aria-label="Open AI tools"
+                      className={aiOpen ? "active" : ""}
+                      onClick={() => setAiOpen((value) => !value)}
+                    >
+                      ✦
+                    </button>
+                  </>
                 )}
                 <small>
                   {noteMode ? "Internal note · team only" : "Type / for saved replies"}
@@ -895,12 +1015,17 @@ function Thread({
                   {busy ? "Saving…" : noteMode ? "Save internal note" : "Send"}
                 </button>
                 {!noteMode && (
-                  <button
-                    disabled={busy || !draft.trim() || !!conversation.send_blocked_reason}
-                    onClick={() => submit(true)}
-                  >
-                    Send & Close
-                  </button>
+                  <details className="crm-send-menu">
+                    <summary aria-label="More send options">▾</summary>
+                    <div>
+                      <button
+                        disabled={busy || !draft.trim() || !!conversation.send_blocked_reason}
+                        onClick={() => submit(true)}
+                      >
+                        Send & Close
+                      </button>
+                    </div>
+                  </details>
                 )}
               </div>
             </footer>
@@ -920,11 +1045,17 @@ function Thread({
       {manageReplies && (
         <div className="crm-modal-backdrop" role="dialog" aria-modal="true" aria-label="Manage saved replies">
           <div className="crm-modal">
-            <button className="crm-modal-close" onClick={() => { setManageReplies(false); refresh(); }}>
+            <button className="crm-modal-close" onClick={() => { setManageReplies(false); setNewReply(false); refresh(); }}>
               Close ×
             </button>
-            <SavedReplies />
+            <SavedReplies startNew={newReply} />
           </div>
+        </div>
+      )}
+      {lightbox && (
+        <div className="crm-lightbox" role="dialog" aria-modal="true" aria-label="Image preview" onClick={() => setLightbox("")}>
+          <button aria-label="Close image preview">×</button>
+          <img src={lightbox} alt="Full attachment preview" />
         </div>
       )}
     </div>

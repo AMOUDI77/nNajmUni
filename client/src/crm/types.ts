@@ -27,8 +27,18 @@ export type Conversation = {
   status: string;
   labels: Label[];
   send_blocked_reason?: string | null;
+  capabilities?: ChannelCapabilities;
   reminder_at?: string | null;
   source_type?: string;
+};
+export type ChannelCapabilities = {
+  canSendText: boolean;
+  canSendImage: boolean;
+  canSendAttachment: boolean;
+  canSendAudio: boolean;
+  canSendVoiceRecording: boolean;
+  canSendTemplate: boolean;
+  canSendQuickReplies: boolean;
 };
 export type Message = {
   id: number;
@@ -40,7 +50,14 @@ export type Message = {
   safe_error?: string;
   created_at: string;
   provider_timestamp?: string;
-  attachments: { type: string; url?: string }[];
+  attachments: {
+    type: string;
+    url?: string;
+    duration_ms?: number;
+    mime_type?: string;
+    filename?: string;
+    size?: number;
+  }[];
 };
 export type ConversationEvent = {
   id: number;
@@ -123,6 +140,7 @@ export type SavedReply = {
   shortcut: string;
   content: string;
   status: "ACTIVE" | "ARCHIVED";
+  pinned: boolean;
   updated_at?: string;
 };
 export type Page<T> = {

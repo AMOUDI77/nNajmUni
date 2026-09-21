@@ -95,3 +95,37 @@ def send_message(account, recipient, text, comment_id=None):
     if not mid:
         raise ProviderError("Instagram did not confirm a message ID", uncertain=True)
     return str(mid)
+
+
+def send_audio(account, recipient, media_url):
+    """Deliver recorded audio only where the provider capability is verified.
+
+    The mock provider deliberately supports the complete composer state machine.
+    Live Instagram delivery remains disabled until NajmUni verifies an exact
+    supported audio format and public-media delivery contract against Meta.
+    """
+    if is_mock():
+        return "mock-audio-" + uuid.uuid4().hex
+    raise ProviderError(
+        "Recorded voice delivery is not enabled for this Instagram connection"
+    )
+
+
+def send_media(account, recipient, media_type, attachment):
+    """Mock media delivery; live stays closed until durable public storage exists."""
+    if is_mock():
+        return "mock-media-" + uuid.uuid4().hex
+    if media_type != "image":
+        raise ProviderError("This file type cannot be sent through Instagram")
+    provider_url = attachment.get("provider_url")
+    if not provider_url or not provider_url.startswith("https://"):
+        raise ProviderError("Image delivery requires configured secure object storage")
+    payload = {"recipient": {"id": recipient}, "message": {"attachment": {"type": "image", "payload": {"url": provider_url}}}}
+    response = provider_request(
+        "POST", graph_url(account["provider_account_id"] + "/messages"),
+        headers={"Authorization": "Bearer " + decrypt(account["encrypted_token"])}, json=payload,
+    )
+    mid = response.get("message_id")
+    if not mid:
+        raise ProviderError("Instagram did not confirm a message ID", uncertain=True)
+    return str(mid)

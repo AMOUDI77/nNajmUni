@@ -19,12 +19,14 @@ def test_saved_reply_lifecycle_and_viewer_permissions(crm_client):
             "title": "Visa process",
             "shortcut": "/VISA",
             "content": "Hi {{first_name}}, your {{program}} visa steps are ready.",
+            "pinned": True,
         },
     )
     assert created.status_code == 201, created.json
     reply_id = created.json["id"]
     rows = crm_client.get("/api/crm/saved-replies?q=visa").json
     assert rows[0]["shortcut"] == "visa"
+    assert rows[0]["pinned"] is True
     assert "{{first_name}}" in rows[0]["content"]
 
     duplicate = crm_client.post(

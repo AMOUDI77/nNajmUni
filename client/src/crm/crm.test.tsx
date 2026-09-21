@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import CRM from "./CRM";
+import VoiceRecorder from "./inbox/VoiceRecorder";
+import MediaComposer, { validateMedia } from "./inbox/MediaComposer";
 const user = {
   id: 1,
   full_name: "Demo Counselor",
@@ -22,6 +24,12 @@ const conversation = {
   assigned_to: null,
   labels: [],
   last_message_at: "2026-09-15T12:00:00Z",
+  voice_delivery_supported: true,
+  capabilities: {
+    canSendText: true, canSendImage: true, canSendAttachment: true,
+    canSendAudio: true, canSendVoiceRecording: true,
+    canSendTemplate: false, canSendQuickReplies: false,
+  },
 };
 const contact = {
   id: 1,
@@ -162,6 +170,157 @@ describe("CRM workflows", () => {
         String(url).endsWith("/conversations/1/messages") && init?.method === "POST",
       ),
     ).toBe(false);
+  });
+  it("opens saved replies from the composer button and inserts without sending", async () => {
+    show("/crm/inbox/1");
+    const composer = await screen.findByLabelText("Reply message");
+    await userEvent.type(composer, "Context: ");
+    await userEvent.click(screen.getByRole("button", { name: "Open saved replies" }));
+    await userEvent.type(
+      screen.getByLabelText("Search composer saved replies"),
+      "welcome",
+    );
+    await userEvent.keyboard("{Enter}");
+    expect((composer as HTMLTextAreaElement).value).toContain("Context: Hello");
+    expect(
+      vi.mocked(fetch).mock.calls.some(([url, init]) =>
+        String(url).endsWith("/conversations/1/messages") && init?.method === "POST",
+      ),
+    ).toBe(false);
+  });
+  it("keeps a completed voice recording ready after an upload failure", async () => {
+    class FakeMediaRecorder {
+      static isTypeSupported() { return true; }
+      state = "inactive";
+      mimeType = "audio/webm";
+      ondataavailable: ((event: { data: Blob }) => void) | null = null;
+      onstop: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      start() { this.state = "recording"; }
+      stop() {
+        this.state = "inactive";
+        this.ondataavailable?.({ data: new Blob(["voice"], { type: this.mimeType }) });
+        this.onstop?.();
+      }
+    }
+    vi.stubGlobal("MediaRecorder", FakeMediaRecorder);
+    Object.defineProperty(navigator, "mediaDevices", {
+      configurable: true,
+      value: {
+        getUserMedia: vi.fn(async () => ({
+          getTracks: () => [{ stop: vi.fn() }],
+        })),
+      },
+    });
+    Object.defineProperty(URL, "createObjectURL", {
+      configurable: true,
+      value: vi.fn(() => "blob:test-voice"),
+    });
+    Object.defineProperty(URL, "revokeObjectURL", {
+      configurable: true,
+      value: vi.fn(),
+    });
+    mockApi((path, init) => {
+      if (init?.body instanceof FormData)
+        return new Error("Offline");
+    });
+    render(
+      <VoiceRecorder
+        conversationId={99}
+        deliverySupported
+        onSent={vi.fn()}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Record voice message" }));
+    expect(await screen.findByText(/Recording/)).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Stop" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Send voice" }));
+    expect(await screen.findByText(/ready to retry/i)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Send voice" })).toBeTruthy();
+  });
+  it("explains microphone permission denial and allows cancelling a recording", async () => {
+    class FakeMediaRecorder {
+      static isTypeSupported() { return true; }
+      state = "inactive";
+      mimeType = "audio/webm";
+      ondataavailable = null;
+      onstop = null;
+      onerror = null;
+      start() { this.state = "recording"; }
+      stop() { this.state = "inactive"; }
+    }
+    vi.stubGlobal("MediaRecorder", FakeMediaRecorder);
+    Object.defineProperty(navigator, "mediaDevices", {
+      configurable: true,
+      value: { getUserMedia: vi.fn(async () => { throw new DOMException("Denied", "NotAllowedError"); }) },
+    });
+    const { rerender } = render(<VoiceRecorder conversationId={102} deliverySupported onSent={vi.fn()} />);
+    await userEvent.click(screen.getByRole("button", { name: "Record voice message" }));
+    expect(await screen.findByText(/permission was denied/i)).toBeTruthy();
+    Object.defineProperty(navigator, "mediaDevices", {
+      configurable: true,
+      value: { getUserMedia: vi.fn(async () => ({ getTracks: () => [{ stop: vi.fn() }] })) },
+    });
+    rerender(<VoiceRecorder conversationId={103} deliverySupported onSent={vi.fn()} />);
+    await userEvent.click(screen.getByRole("button", { name: "Record voice message" }));
+    expect(await screen.findByText(/Recording/)).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.getByRole("button", { name: "Record voice message" })).toBeTruthy();
+  });
+  it("validates media type and size before upload", () => {
+    expect(validateMedia(new File(["plain"], "notes.txt", { type: "text/plain" }), "file"))
+      .toBe("This file type cannot be sent through Instagram.");
+    expect(validateMedia(new File(["image"], "photo.png", { type: "image/png" }), "image"))
+      .toBe("");
+    const oversized = new File(["image"], "huge.png", { type: "image/png" });
+    Object.defineProperty(oversized, "size", { value: 9 * 1024 * 1024 });
+    expect(validateMedia(oversized, "image")).toBe("Images must be smaller than 8 MB.");
+  });
+  it("accepts image drop and paste while keeping internal notes media-free", async () => {
+    Object.defineProperty(URL, "createObjectURL", { configurable: true, value: vi.fn(() => "blob:dropped") });
+    Object.defineProperty(URL, "revokeObjectURL", { configurable: true, value: vi.fn() });
+    show("/crm/inbox/1");
+    const composer = await screen.findByLabelText("Reply message");
+    const dropped = new File(["image"], "drop.png", { type: "image/png" });
+    fireEvent.drop(composer, { dataTransfer: { files: [dropped] } });
+    expect(await screen.findByText("drop.png")).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Remove attachment" }));
+    fireEvent.paste(composer, { clipboardData: { files: [dropped] } });
+    expect(await screen.findByText("drop.png")).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Remove attachment" }));
+    await userEvent.click(screen.getByRole("button", { name: "Internal Note" }));
+    const note = screen.getByLabelText("Private note");
+    fireEvent.drop(note, { dataTransfer: { files: [dropped] } });
+    expect(screen.queryByTestId("media-draft")).toBeNull();
+  });
+  it("previews and removes an image without sending it", async () => {
+    Object.defineProperty(URL, "createObjectURL", { configurable: true, value: vi.fn(() => "blob:image") });
+    Object.defineProperty(URL, "revokeObjectURL", { configurable: true, value: vi.fn() });
+    const file = new File(["image"], "campus.png", { type: "image/png" });
+    render(<MediaComposer
+      conversationId={44}
+      capabilities={conversation.capabilities}
+      text=""
+      incomingFile={{ file, token: "direct-preview" }}
+      onSent={vi.fn()}
+    />);
+    expect(await screen.findByAltText("Selected upload preview")).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Remove attachment" }));
+    expect(screen.queryByTestId("media-draft")).toBeNull();
+  });
+  it("keeps attachment drafts scoped to their conversation and obeys capabilities", async () => {
+    Object.defineProperty(URL, "createObjectURL", { configurable: true, value: vi.fn(() => "blob:scoped") });
+    Object.defineProperty(URL, "revokeObjectURL", { configurable: true, value: vi.fn() });
+    const file = new File(["image"], "scoped.png", { type: "image/png" });
+    const { rerender } = render(<MediaComposer conversationId={71} capabilities={conversation.capabilities} text="" incomingFile={{ file, token: "one" }} onSent={vi.fn()} />);
+    expect(await screen.findByText("scoped.png")).toBeTruthy();
+    const disabled = { ...conversation.capabilities, canSendImage: false, canSendAttachment: false };
+    rerender(<MediaComposer conversationId={72} capabilities={disabled} text="" onSent={vi.fn()} />);
+    expect(screen.queryByText("scoped.png")).toBeNull();
+    expect(screen.getByRole("button", { name: "Choose image" }).hasAttribute("disabled")).toBe(true);
+    rerender(<MediaComposer conversationId={71} capabilities={conversation.capabilities} text="" onSent={vi.fn()} />);
+    expect(await screen.findByText("scoped.png")).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Remove attachment" }));
   });
   it("applies server-side inbox filters", async () => {
     show();
