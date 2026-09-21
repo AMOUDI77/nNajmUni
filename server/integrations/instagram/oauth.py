@@ -1,13 +1,14 @@
 """Server-side Instagram Login authorization and encrypted connection storage."""
 
 import os
+import re
 import secrets
 from datetime import timedelta
 from urllib.parse import urlencode, urlparse
 
 from crm.auth import digest, require_staff
 from crm.common import audit, engine, now, output
-from crm.schema_v1 import oauth_states, social_accounts
+from crm.schema_v1 import jobs, oauth_states, social_accounts
 from flask import Blueprint, g, jsonify, redirect, request
 from sqlalchemy import select, update
 from werkzeug.exceptions import BadRequest, Forbidden, ServiceUnavailable
@@ -22,6 +23,46 @@ SCOPES = (
     "instagram_business_manage_messages",
     "instagram_business_manage_comments",
 )
+REQUIRED_CONFIGURATION = (
+    "META_APP_ID",
+    "META_APP_SECRET",
+    "META_API_VERSION",
+    "META_INSTAGRAM_REDIRECT_URI",
+    "META_WEBHOOK_VERIFY_TOKEN",
+    "META_TOKEN_ENCRYPTION_KEY",
+)
+
+
+def configured():
+    if not all(os.environ.get(key, "").strip() for key in REQUIRED_CONFIGURATION):
+        return False
+    if not re.fullmatch(r"v\d+\.\d+", os.environ["META_API_VERSION"]):
+        return False
+    callback = urlparse(os.environ["META_INSTAGRAM_REDIRECT_URI"])
+    if callback.scheme != "https" or callback.path != "/api/crm/integrations/instagram/callback":
+        return False
+    try:
+        encrypt("configuration-check")
+    except ProviderError:
+        return False
+    return True
+
+
+def settings_redirect(result):
+    allowed = {
+        value.strip().rstrip("/")
+        for value in (
+            os.environ.get("CRM_ALLOWED_ORIGINS", "").strip()
+            or os.environ.get("ALLOWED_ORIGINS", "")
+        ).split(",")
+        if value.strip().startswith("https://")
+    }
+    base = os.environ.get("CRM_PUBLIC_URL", "").strip().rstrip("/")
+    parsed = urlparse(base)
+    if not base or parsed.scheme + "://" + parsed.netloc not in allowed:
+        base = sorted(allowed)[0] if allowed else ""
+    path = "/crm/settings/integrations?instagram=" + result
+    return redirect(base + path if base else path)
 
 
 @api.get("")
@@ -41,18 +82,62 @@ def status():
             .mappings()
             .all()
         )
+        sync_rows = (
+            conn.execute(
+                select(
+                    jobs.c.id,
+                    jobs.c.status,
+                    jobs.c.payload,
+                    jobs.c.completed_at,
+                    jobs.c.safe_error,
+                )
+                .where(jobs.c.kind == "instagram_sync")
+                .order_by(jobs.c.id.desc())
+            )
+            .mappings()
+            .all()
+        )
+    sync_by_account = {}
+    for row in sync_rows:
+        account_id = (row["payload"] or {}).get("account_id")
+        if account_id not in sync_by_account:
+            sync_by_account[account_id] = row
+    accounts = []
+    for row in rows:
+        account = dict(row)
+        sync = sync_by_account.get(row["id"])
+        expired = bool(row["token_expires_at"] and row["token_expires_at"] <= now())
+        account.update(
+            connection_health=(
+                "HEALTHY"
+                if row["status"] == "CONNECTED" and not expired
+                else "RECONNECT_REQUIRED"
+            ),
+            permissions={
+                "messages": row["status"] == "CONNECTED" and not expired,
+                "comments": row["status"] == "CONNECTED" and not expired,
+            },
+            last_sync_at=sync["completed_at"] if sync else None,
+            sync=(
+                {
+                    "id": sync["id"],
+                    "status": sync["status"],
+                    "result": (sync["payload"] or {}).get("result"),
+                    "safe_error": sync["safe_error"],
+                }
+                if sync
+                else None
+            ),
+        )
+        accounts.append(account)
     return output(
         {
-            "accounts": rows,
-            "configured": all(
-                os.environ.get(k)
-                for k in (
-                    "META_APP_ID",
-                    "META_APP_SECRET",
-                    "META_API_VERSION",
-                    "META_INSTAGRAM_REDIRECT_URI",
-                    "META_TOKEN_ENCRYPTION_KEY",
-                )
+            "accounts": accounts,
+            "configured": configured(),
+            "connected": any(a["status"] == "CONNECTED" for a in accounts),
+            "account_username": next(
+                (a["username"] for a in accounts if a["status"] == "CONNECTED"),
+                None,
             ),
             "mode": os.environ.get("META_PROVIDER_MODE", "live"),
         }
@@ -62,6 +147,8 @@ def status():
 @api.post("/connect")
 @require_staff("OWNER", "ADMIN")
 def connect():
+    if not configured():
+        raise ServiceUnavailable("Instagram platform setup is not complete")
     app_id = os.environ.get("META_APP_ID", "")
     callback = os.environ.get("META_INSTAGRAM_REDIRECT_URI", "")
     if not app_id or not callback.startswith("https://"):
@@ -122,9 +209,7 @@ def callback():
             .values(used_at=now())
         )
     if request.args.get("error"):
-        raise BadRequest(
-            "Instagram authorization was declined. You can try again from Settings"
-        )
+        return settings_redirect("cancelled")
     code = request.args.get("code", "")
     if not code or len(code) > 4000:
         raise BadRequest("Missing authorization code")
@@ -171,8 +256,8 @@ def callback():
             data={"subscribed_fields": "messages,messaging_postbacks,comments"},
         )
         encrypted = encrypt(token)
-    except ProviderError as exc:
-        raise BadRequest(str(exc)) from None
+    except ProviderError:
+        return settings_redirect("error")
     with engine().begin() as conn:
         existing = conn.execute(
             select(social_accounts.c.id).where(
@@ -201,15 +286,69 @@ def callback():
                 )
             ).inserted_primary_key[0]
         audit(conn, g.staff["id"], "integration.connected", "social_account", aid)
-    base = os.environ.get("CRM_PUBLIC_URL", "")
-    allowed = {
-        s.strip().rstrip("/")
-        for s in os.environ.get("CRM_ALLOWED_ORIGINS", "").split(",")
-    }
-    parsed = urlparse(base)
-    if base and (parsed.scheme + "://" + parsed.netloc) in allowed:
-        return redirect(base.rstrip("/") + "/crm/settings/integrations")
-    return redirect("/crm/settings/integrations")
+    return settings_redirect("connected")
+
+
+@api.post("/<int:aid>/sync")
+@require_staff("OWNER", "ADMIN")
+def start_sync(aid):
+    with engine().begin() as conn:
+        account = (
+            conn.execute(
+                select(social_accounts)
+                .where(
+                    social_accounts.c.id == aid,
+                    social_accounts.c.provider == "instagram",
+                )
+                .with_for_update()
+            )
+            .mappings()
+            .first()
+        )
+        if not account or account["status"] != "CONNECTED" or not account["encrypted_token"]:
+            raise BadRequest("Reconnect Instagram before syncing conversations")
+        active = conn.execute(
+            select(jobs.c.id, jobs.c.payload).where(
+                jobs.c.kind == "instagram_sync",
+                jobs.c.status.in_(["QUEUED", "PROCESSING", "RETRYING"]),
+            )
+        ).mappings()
+        for row in active:
+            if (row["payload"] or {}).get("account_id") == aid:
+                return output({"job_id": row["id"], "status": "IN_PROGRESS"}, 202)
+        job_id = conn.execute(
+            jobs.insert().values(
+                kind="instagram_sync",
+                dedupe_key=f"instagram-sync:{aid}:{secrets.token_hex(12)}",
+                payload={"account_id": aid, "requested_by": g.staff["id"]},
+            )
+        ).inserted_primary_key[0]
+        audit(conn, g.staff["id"], "integration.sync_requested", "social_account", aid)
+    return output({"job_id": job_id, "status": "QUEUED"}, 202)
+
+
+@api.get("/<int:aid>/sync/<int:job_id>")
+@require_staff()
+def sync_status(aid, job_id):
+    with engine().connect() as conn:
+        row = (
+            conn.execute(
+                select(jobs.c.status, jobs.c.payload, jobs.c.safe_error).where(
+                    jobs.c.id == job_id, jobs.c.kind == "instagram_sync"
+                )
+            )
+            .mappings()
+            .first()
+        )
+    if not row or (row["payload"] or {}).get("account_id") != aid:
+        raise BadRequest("Conversation sync not found")
+    return output(
+        {
+            "status": row["status"],
+            "result": (row["payload"] or {}).get("result"),
+            "safe_error": row["safe_error"],
+        }
+    )
 
 
 @api.post("/<int:aid>/disconnect")

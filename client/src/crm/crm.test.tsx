@@ -354,4 +354,132 @@ describe("CRM workflows", () => {
     );
     expect(screen.getByLabelText("Save the next reply to")).toBeTruthy();
   });
+  it("shows an owner a clear platform setup state", async () => {
+    mockApi((path) => {
+      if (path === "/integrations/instagram")
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            configured: false,
+            connected: false,
+            account_username: null,
+            mode: "live",
+            accounts: [],
+          }),
+        };
+    });
+    show("/crm/settings/integrations");
+    expect(await screen.findByText("Setup required")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Connect Instagram" })).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Complete Instagram Setup" }));
+    expect(await screen.findByText(/Meta secrets are never entered in CRM/)).toBeTruthy();
+  });
+  it("directs non-owners to the workspace owner when setup is missing", async () => {
+    mockApi((path) => {
+      if (path === "/auth/me")
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            user: { ...user, role: "COUNSELOR" },
+            csrf_token: "test-csrf",
+          }),
+        };
+      if (path === "/integrations/instagram")
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            configured: false,
+            connected: false,
+            account_username: null,
+            mode: "live",
+            accounts: [],
+          }),
+        };
+    });
+    show("/crm/settings/integrations");
+    expect(
+      await screen.findByText("Ask your workspace owner to finish Instagram setup."),
+    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Complete Instagram Setup" })).toBeNull();
+  });
+  it("enables Instagram OAuth when platform configuration is ready", async () => {
+    mockApi((path) => {
+      if (path === "/integrations/instagram")
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            configured: true,
+            connected: false,
+            account_username: null,
+            mode: "live",
+            accounts: [],
+          }),
+        };
+    });
+    show("/crm/settings/integrations");
+    expect(await screen.findByText("Ready to connect")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Connect Instagram" }).hasAttribute("disabled")).toBe(false);
+    expect(screen.getByText(/official Instagram website/)).toBeTruthy();
+  });
+  it.each([
+    ["cancelled", "Instagram authorization was cancelled. Nothing was changed."],
+    ["error", "Instagram could not be connected. Try again or review the Meta app setup."],
+  ])("shows the safe OAuth %s result", async (result, message) => {
+    mockApi((path) => {
+      if (path === "/integrations/instagram")
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            configured: true,
+            connected: false,
+            account_username: null,
+            mode: "live",
+            accounts: [],
+          }),
+        };
+    });
+    show(`/crm/settings/integrations?instagram=${result}`);
+    expect(await screen.findByText(message)).toBeTruthy();
+  });
+  it("shows connected capabilities, health, sync, and safe actions", async () => {
+    mockApi((path) => {
+      if (path === "/integrations/instagram")
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            configured: true,
+            connected: true,
+            account_username: "najmuni",
+            mode: "live",
+            accounts: [
+              {
+                id: 7,
+                username: "najmuni",
+                status: "CONNECTED",
+                token_expires_at: "2026-11-20T12:00:00Z",
+                last_webhook_at: null,
+                last_sync_at: null,
+                connection_health: "HEALTHY",
+                permissions: { messages: true, comments: true },
+                sync: null,
+              },
+            ],
+          }),
+        };
+    });
+    show("/crm/settings/integrations?instagram=connected");
+    expect(await screen.findByText("@najmuni")).toBeTruthy();
+    expect(screen.getByText("Instagram connected successfully.")).toBeTruthy();
+    expect(screen.getByText("Healthy")).toBeTruthy();
+    expect(screen.getAllByText("Enabled")).toHaveLength(2);
+    expect(screen.getByRole("button", { name: "Sync Conversations" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Reconnect" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Disconnect" })).toBeTruthy();
+  });
 });

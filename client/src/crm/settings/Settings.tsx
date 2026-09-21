@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { NavLink, useParams } from "react-router-dom";
-import { write } from "../api";
+import { NavLink, useLocation, useParams } from "react-router-dom";
+import { crmApi, write } from "../api";
 import { date, ErrorBanner, Skeleton, useData } from "../components";
 import { useCRM } from "../context";
 import type { Staff, Label } from "../types";
@@ -8,14 +8,31 @@ import Knowledge from "../pages/Knowledge";
 import SavedReplies from "./SavedReplies";
 type Integration = {
   configured: boolean;
+  connected: boolean;
+  account_username: string | null;
   mode: string;
   accounts: {
     id: number;
     username: string;
     status: string;
-    token_expires_at: string;
-    last_webhook_at: string;
+    token_expires_at: string | null;
+    last_webhook_at: string | null;
+    last_sync_at: string | null;
+    connection_health: string;
+    permissions: { messages: boolean; comments: boolean };
+    sync: {
+      id: number;
+      status: string;
+      result: SyncResult | null;
+      safe_error: string | null;
+    } | null;
   }[];
+};
+type SyncResult = {
+  imported_conversations: number;
+  imported_messages: number;
+  skipped_existing: number;
+  unavailable: number;
 };
 type Settings = {
   ai_mode: string;
@@ -120,87 +137,144 @@ function Integrations({
   act,
   onError,
 }: Props & { onError: (s: string) => void }) {
+  const { user } = useCRM();
+  const location = useLocation();
   const { data, error } = useData<Integration>("/integrations/instagram", tick);
+  const [showSetup, setShowSetup] = useState(false);
+  const [syncing, setSyncing] = useState<number | null>(null);
+  const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
   if (!data) return error ? <ErrorBanner message={error} /> : <Skeleton />;
+  const oauthResult = new URLSearchParams(location.search).get("instagram");
+
   async function connect() {
     try {
-      const r = await write<{ url: string }>(
+      const result = await write<{ url: string }>(
         "/integrations/instagram/connect",
         {},
       );
-      window.location.assign(r.url);
-    } catch (e) {
-      onError((e as Error).message);
+      if (!result.url.startsWith("https://www.instagram.com/oauth/authorize?"))
+        throw new Error("Instagram returned an invalid authorization URL");
+      window.location.assign(result.url);
+    } catch (caught) {
+      onError((caught as Error).message);
     }
   }
+
+  async function sync(accountId: number) {
+    setSyncing(accountId);
+    setSyncResult(null);
+    onError("");
+    try {
+      const started = await write<{ job_id: number }>(
+        `/integrations/instagram/${accountId}/sync`,
+        {},
+      );
+      for (let attempt = 0; attempt < 120; attempt += 1) {
+        const result = await crmApi<{
+          status: string;
+          result: SyncResult | null;
+          safe_error: string | null;
+        }>(`/integrations/instagram/${accountId}/sync/${started.job_id}`);
+        if (result.status === "SUCCEEDED" && result.result) {
+          setSyncResult(result.result);
+          return;
+        }
+        if (result.status === "FAILED")
+          throw new Error(result.safe_error || "Conversation sync failed");
+        await new Promise((resolve) => window.setTimeout(resolve, 1000));
+      }
+      throw new Error("Conversation sync is still running. Check again shortly.");
+    } catch (caught) {
+      onError((caught as Error).message);
+    } finally {
+      setSyncing(null);
+    }
+  }
+
   return (
     <section className="crm-editor-section crm-integration">
-      <div className="crm-integration-icon">◎</div>
+      <div className="crm-integration-icon">IG</div>
       <h2>Instagram</h2>
-      <p className="crm-muted">
-        Receive student messages and reply from the NajmUni inbox.
-      </p>
+      {oauthResult === "connected" && (
+        <p className="crm-policy" role="status">Instagram connected successfully.</p>
+      )}
+      {oauthResult === "cancelled" && (
+        <p className="crm-muted" role="status">Instagram authorization was cancelled. Nothing was changed.</p>
+      )}
+      {oauthResult === "error" && (
+        <ErrorBanner message="Instagram could not be connected. Try again or review the Meta app setup." />
+      )}
       {data.mode === "mock" && (
-        <p className="crm-policy">
-          Development provider · Messages stay in the local test workspace.
-        </p>
+        <p className="crm-policy">Development provider. Messages stay in the local test workspace.</p>
       )}
-      {data.accounts.length ? (
-        data.accounts.map((a) => (
-          <div key={a.id} className="crm-integration-account">
-            <strong>@{a.username || "Instagram account"}</strong>
-            <span
-              className={
-                "crm-tag " + (a.status === "CONNECTED" ? "success" : "")
-              }
-            >
-              {a.status.toLowerCase()}
-            </span>
-            <div className="crm-kv">
-              <span>Last webhook</span>
-              <span>{date(a.last_webhook_at)}</span>
-            </div>
-            <div className="crm-kv">
-              <span>Authorization expires</span>
-              <span>{date(a.token_expires_at)}</span>
-            </div>
-            {admin && a.status === "CONNECTED" && (
-              <button
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      "Disconnect Instagram? New messages and queued replies will stop.",
-                    )
-                  )
-                    void act(`/integrations/instagram/${a.id}/disconnect`, {});
-                }}
-              >
-                Disconnect
+      {!data.configured ? (
+        <div className="crm-integration-state">
+          <span className="crm-tag">Setup required</span>
+          <h3>Instagram integration has not been configured for this workspace yet.</h3>
+          {user?.role === "OWNER" ? (
+            <>
+              <button className="crm-primary" onClick={() => setShowSetup((value) => !value)}>
+                Complete Instagram Setup
               </button>
-            )}
-          </div>
-        ))
+              {showSetup && (
+                <p className="crm-muted" role="status">
+                  Configure the NajmUni Meta app in the server environment, then return here and refresh. Instagram passwords and Meta secrets are never entered in CRM.
+                </p>
+              )}
+            </>
+          ) : (
+            <p className="crm-muted">Ask your workspace owner to finish Instagram setup.</p>
+          )}
+        </div>
+      ) : !data.connected ? (
+        <div className="crm-integration-state">
+          <span className="crm-tag success">Ready to connect</span>
+          <h3>Connect your Instagram Professional account</h3>
+          <p className="crm-muted">
+            Receive and reply to messages from NajmUni. You will sign in and approve access on the official Instagram website.
+          </p>
+          {admin && <button className="crm-primary" onClick={connect}>Connect Instagram</button>}
+        </div>
       ) : (
-        <p>No Instagram account connected yet.</p>
-      )}
-      {admin && (
-        <button
-          className="crm-primary"
-          disabled={!data.configured}
-          onClick={connect}
-        >
-          {data.accounts.length ? "Reconnect Instagram" : "Connect Instagram"}
-        </button>
-      )}
-      {!data.configured && (
-        <p className="crm-muted">
-          An owner needs to complete the Instagram integration setup before
-          connecting.
-        </p>
+        data.accounts
+          .filter((account) => account.status === "CONNECTED")
+          .map((account) => {
+            const result = syncResult || account.sync?.result;
+            return (
+              <div key={account.id} className="crm-integration-account">
+                <strong>@{account.username || "Instagram account"}</strong>
+                <span className="crm-tag success">Connected</span>
+                <div className="crm-kv"><span>Messages</span><span>{account.permissions.messages ? "Enabled" : "Unavailable"}</span></div>
+                <div className="crm-kv"><span>Comments</span><span>{account.permissions.comments ? "Enabled" : "Unavailable"}</span></div>
+                <div className="crm-kv"><span>Connection</span><span>{account.connection_health === "HEALTHY" ? "Healthy" : "Reconnect required"}</span></div>
+                <div className="crm-kv"><span>Last webhook</span><span>{date(account.last_webhook_at)}</span></div>
+                <div className="crm-kv"><span>Last sync</span><span>{date(account.last_sync_at)}</span></div>
+                {result && (
+                  <div className="crm-policy" role="status">
+                    Imported: {result.imported_conversations} conversations, {result.imported_messages} messages. Skipped: {result.skipped_existing} existing.
+                    {result.unavailable > 0 && ` Unavailable: ${result.unavailable} items Meta did not expose completely.`}
+                  </div>
+                )}
+                {admin && (
+                  <div className="crm-integration-actions">
+                    <button onClick={() => void sync(account.id)} disabled={syncing !== null}>
+                      {syncing === account.id ? "Syncing..." : "Sync Conversations"}
+                    </button>
+                    <button onClick={connect}>Reconnect</button>
+                    <button onClick={() => {
+                      if (window.confirm("Disconnect Instagram? New messages and queued replies will stop."))
+                        void act(`/integrations/instagram/${account.id}/disconnect`, {});
+                    }}>Disconnect</button>
+                  </div>
+                )}
+              </div>
+            );
+          })
       )}
     </section>
   );
 }
+
 function Team({ tick, admin, act }: Props) {
   const { data, error } = useData<Staff[]>("/team", tick);
   const { user } = useCRM();

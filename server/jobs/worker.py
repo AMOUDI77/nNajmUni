@@ -4,6 +4,10 @@ import argparse
 import logging
 import time
 
+from sqlalchemy import update
+
+from crm.schema_v1 import jobs
+
 from .queue import claim, finish
 
 log = logging.getLogger("najmuni.jobs")
@@ -30,6 +34,19 @@ def run_once(engine):
             from crm.ai import generate
 
             generate(engine, job["payload"]["suggestion_id"])
+        elif job["kind"] == "instagram_sync":
+            from integrations.instagram.sync import sync_account
+
+            result = sync_account(engine, job["payload"]["account_id"])
+            with engine.begin() as conn:
+                conn.execute(
+                    update(jobs)
+                    .where(
+                        jobs.c.id == job["id"],
+                        jobs.c.lease_token == job["lease_token"],
+                    )
+                    .values(payload={**job["payload"], "result": result})
+                )
         else:
             raise ValueError("Unknown job kind")
         finish(engine, job)
