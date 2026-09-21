@@ -358,6 +358,26 @@
 .crm-integration-account > .crm-tag {
   margin-inline-start: 15px;
 }
+.crm-integration-state {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+  margin-top: 20px;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+}
+.crm-integration-state h3,
+.crm-integration-state p {
+  margin: 0;
+}
+.crm-integration-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
 .crm-section-heading {
   display: flex;
   align-items: center;
