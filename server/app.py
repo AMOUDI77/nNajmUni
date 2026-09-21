@@ -28,7 +28,31 @@ else:
                 os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
 
 _origins = [o.strip() for o in os.environ.get('ALLOWED_ORIGINS', 'http://localhost:5173,http://localhost:4173').split(',') if o.strip()]
-CORS(app, resources={r"/api/*": {"origins": _origins}})
+# CRM requests carry an HttpOnly session cookie. Keep their CORS policy in this
+# single registration so the broader public API rule cannot overwrite the
+# credential header. CRM_ALLOWED_ORIGINS is optional during rollout and safely
+# inherits the already configured production ALLOWED_ORIGINS list.
+_crm_origins = [
+    o.strip()
+    for o in (
+        os.environ.get('CRM_ALLOWED_ORIGINS', '').strip()
+        or os.environ.get('ALLOWED_ORIGINS', '')
+        or 'http://localhost:5173,http://localhost:4173'
+    ).split(',')
+    if o.strip()
+]
+if '*' in _crm_origins:
+    raise ValueError('CRM_ALLOWED_ORIGINS must contain explicit origins')
+CORS(
+    app,
+    resources={
+        r"/api/crm/.*": {
+            "origins": _crm_origins,
+            "supports_credentials": True,
+        },
+        r"/api/.*": {"origins": _origins},
+    },
+)
 
 DB_PATH    = os.environ.get('DB_PATH', os.path.join(_HERE, '..', 'data', 'najmuni.db'))
 if not os.path.isabs(DB_PATH):

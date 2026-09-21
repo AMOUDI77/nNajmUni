@@ -2,25 +2,6 @@
 
 
 def register_crm(app, engine_provider):
-    import os
-
-    from flask_cors import CORS
-
-    crm_origins = [
-        s.strip()
-        for s in os.environ.get(
-            "CRM_ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:4173"
-        ).split(",")
-        if s.strip()
-    ]
-    if "*" in crm_origins:
-        raise ValueError("CRM_ALLOWED_ORIGINS must contain explicit origins")
-    CORS(
-        app,
-        resources={
-            r"/api/crm/.*": {"origins": crm_origins, "supports_credentials": True}
-        },
-    )
     app.extensions["crm_engine"] = engine_provider
     from .auth import auth
 

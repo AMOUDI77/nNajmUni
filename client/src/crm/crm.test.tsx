@@ -126,8 +126,14 @@ describe("CRM workflows", () => {
       }
     });
     show("/crm/login");
+    expect(
+      await screen.findByRole("heading", { name: "Welcome back" }),
+    ).toBeTruthy();
+    expect(
+      screen.queryByText("Connection lost. Your changes have not been saved."),
+    ).toBeNull();
     await userEvent.type(
-      await screen.findByLabelText("Work email"),
+      screen.getByLabelText("Work email"),
       "demo@example.test",
     );
     await userEvent.type(

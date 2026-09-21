@@ -51,11 +51,14 @@ def public_user(user):
 
 def origin_check():
     origin = request.headers.get("Origin")
+    configured = (
+        os.environ.get("CRM_ALLOWED_ORIGINS", "").strip()
+        or os.environ.get("ALLOWED_ORIGINS", "").strip()
+        or "http://localhost:5173,http://localhost:4173"
+    )
     allowed = {
         s.strip().rstrip("/")
-        for s in os.environ.get(
-            "CRM_ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:4173"
-        ).split(",")
+        for s in configured.split(",")
         if s.strip()
     }
     if origin and origin.rstrip("/") not in allowed:
