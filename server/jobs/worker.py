@@ -25,6 +25,15 @@ SAFE_PROVIDER_ERRORS = {
     "sync_safety": "Instagram synchronization stopped at a safety limit",
     "identity_conflict": "Instagram synchronization found a conflicting conversation identity",
     "lease_lost": "Instagram synchronization lease expired and will retry safely",
+    "history_access": "Instagram did not expose conversation history; verify Advanced Access for messaging in the Meta app",
+}
+
+NON_RETRYABLE_PROVIDER_ERRORS = {
+    "provider_authentication",
+    "provider_permission",
+    "provider_bad_request",
+    "history_access",
+    "identity_conflict",
 }
 
 
@@ -107,10 +116,16 @@ def run_once(engine):
         safe_error = "Processing failed; review configuration and retry"
         if isinstance(error, ProviderError):
             safe_error = SAFE_PROVIDER_ERRORS.get(error.code, safe_error)
-        _update_progress_state(
-            engine, job, "FAILED" if job["attempts"] >= 5 else "RETRYING"
+        retryable = not (
+            isinstance(error, ProviderError)
+            and error.code in NON_RETRYABLE_PROVIDER_ERRORS
         )
-        finish(engine, job, safe_error)
+        _update_progress_state(
+            engine,
+            job,
+            "FAILED" if not retryable or job["attempts"] >= 5 else "RETRYING",
+        )
+        finish(engine, job, safe_error, retryable=retryable)
     return True
 
 

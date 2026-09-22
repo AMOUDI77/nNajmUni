@@ -62,7 +62,7 @@ def claim(engine):
         return {**row, "attempts": row["attempts"] + 1, "lease_token": token}
 
 
-def finish(engine, job, error=None):
+def finish(engine, job, error=None, retryable=True):
     with engine.begin() as conn:
         values = {
             "status": "SUCCEEDED",
@@ -72,7 +72,7 @@ def finish(engine, job, error=None):
             "heartbeat_at": None,
         }
         if error:
-            final = job["attempts"] >= 5
+            final = not retryable or job["attempts"] >= 5
             values = {
                 "status": "FAILED" if final else "RETRYING",
                 "safe_error": error,
