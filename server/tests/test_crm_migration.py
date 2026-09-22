@@ -27,8 +27,14 @@ def test_crm_upgrade_preserves_legacy_records_and_downgrade(tmp_path, monkeypatc
         )
         assert (
             conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-            == "0005_composer_polish"
+            == "0006_instagram_sync_safety"
         )
+    columns = {column["name"] for column in inspect(engine).get_columns("conversations")}
+    assert "provider_conversation_id" in columns
+    job_columns = {
+        column["name"] for column in inspect(engine).get_columns("background_jobs")
+    }
+    assert "heartbeat_at" in job_columns
     assert "saved_replies" in inspect(engine).get_table_names()
     assert {
         "conversation_events",
@@ -51,7 +57,7 @@ def test_worker_command_starts_without_migration(tmp_path):
     import subprocess
     import sys
 
-    from crm.schema_v1 import metadata
+    from crm.schema_v5 import metadata
 
     path = tmp_path / "worker.db"
     engine = create_engine("sqlite:///" + path.as_posix())

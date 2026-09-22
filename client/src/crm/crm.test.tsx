@@ -482,4 +482,53 @@ describe("CRM workflows", () => {
     expect(screen.getByRole("button", { name: "Reconnect" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Disconnect" })).toBeTruthy();
   });
+  it("shows incremental Instagram synchronization progress", async () => {
+    mockApi((path) => {
+      if (path === "/integrations/instagram")
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            configured: true,
+            connected: true,
+            account_username: "najmuni",
+            mode: "live",
+            accounts: [
+              {
+                id: 1,
+                username: "najmuni",
+                status: "CONNECTED",
+                token_expires_at: null,
+                last_webhook_at: null,
+                last_sync_at: null,
+                connection_health: "HEALTHY",
+                permissions: { messages: true, comments: true },
+                sync: {
+                  id: 9,
+                  status: "PROCESSING",
+                  result: null,
+                  safe_error: null,
+                  progress: {
+                    state: "RUNNING",
+                    pages_processed: 83,
+                    conversations_seen: 1240,
+                    imported_conversations: 1240,
+                    imported_messages: 18500,
+                    skipped_existing: 420,
+                    unavailable: 0,
+                    last_progress_at: "2026-09-22T10:00:00Z",
+                  },
+                },
+              },
+            ],
+          }),
+        };
+    });
+    show("/crm/settings/integrations");
+    expect(
+      await screen.findByText(
+        /1,240 conversations imported · 18,500 messages imported · 83 pages processed/,
+      ),
+    ).toBeTruthy();
+  });
 });

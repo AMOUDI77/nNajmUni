@@ -199,6 +199,8 @@ def test_conversation_sync_paginates_and_is_idempotent(crm_client, monkeypatch):
     ).json
     assert result["status"] == "SUCCEEDED"
     assert result["result"] == {
+        "pages_processed": 4,
+        "conversations_seen": 1,
         "imported_conversations": 1,
         "imported_messages": 2,
         "skipped_existing": 0,

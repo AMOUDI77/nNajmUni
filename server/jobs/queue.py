@@ -2,8 +2,8 @@ import secrets
 from datetime import timedelta
 
 from crm.common import now
-from crm.schema_v1 import jobs
-from sqlalchemy import select, update
+from crm.schema_v5 import jobs
+from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
@@ -25,9 +25,10 @@ def claim(engine):
             update(jobs)
             .where(
                 jobs.c.status == "PROCESSING",
-                jobs.c.started_at < now() - timedelta(minutes=5),
+                func.coalesce(jobs.c.heartbeat_at, jobs.c.started_at)
+                < now() - timedelta(minutes=5),
             )
-            .values(status="RETRYING")
+            .values(status="RETRYING", lease_token=None, heartbeat_at=None)
         )
         row = (
             conn.execute(
@@ -52,6 +53,8 @@ def claim(engine):
             .values(
                 status="PROCESSING",
                 started_at=now(),
+                heartbeat_at=now(),
+                completed_at=None,
                 attempts=row["attempts"] + 1,
                 lease_token=token,
             )
@@ -61,13 +64,23 @@ def claim(engine):
 
 def finish(engine, job, error=None):
     with engine.begin() as conn:
-        values = {"status": "SUCCEEDED", "completed_at": now(), "safe_error": None}
+        values = {
+            "status": "SUCCEEDED",
+            "completed_at": now(),
+            "safe_error": None,
+            "lease_token": None,
+            "heartbeat_at": None,
+        }
         if error:
+            final = job["attempts"] >= 5
             values = {
-                "status": "FAILED" if job["attempts"] >= 5 else "RETRYING",
+                "status": "FAILED" if final else "RETRYING",
                 "safe_error": error,
                 "next_attempt_at": now()
                 + timedelta(seconds=min(900, 2 ** job["attempts"] * 5)),
+                "completed_at": now() if final else None,
+                "lease_token": None,
+                "heartbeat_at": None,
             }
         conn.execute(
             update(jobs)
