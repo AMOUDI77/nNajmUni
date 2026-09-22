@@ -1,5 +1,7 @@
 """NajmUni CRM. Registration performs no schema or data writes."""
 
+from .schema_v5 import metadata as _metadata  # register the current runtime schema
+
 
 def register_crm(app, engine_provider):
     app.extensions["crm_engine"] = engine_provider

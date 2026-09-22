@@ -98,10 +98,13 @@ def status():
             .all()
         )
     sync_by_account = {}
+    successful_sync_by_account = {}
     for row in sync_rows:
         account_id = (row["payload"] or {}).get("account_id")
         if account_id not in sync_by_account:
             sync_by_account[account_id] = row
+        if row["status"] == "SUCCEEDED" and account_id not in successful_sync_by_account:
+            successful_sync_by_account[account_id] = row
     accounts = []
     for row in rows:
         account = dict(row)
@@ -117,12 +120,17 @@ def status():
                 "messages": row["status"] == "CONNECTED" and not expired,
                 "comments": row["status"] == "CONNECTED" and not expired,
             },
-            last_sync_at=sync["completed_at"] if sync else None,
+            last_sync_at=(
+                successful_sync_by_account[row["id"]]["completed_at"]
+                if row["id"] in successful_sync_by_account
+                else None
+            ),
             sync=(
                 {
                     "id": sync["id"],
                     "status": sync["status"],
                     "result": (sync["payload"] or {}).get("result"),
+                    "progress": (sync["payload"] or {}).get("progress"),
                     "safe_error": sync["safe_error"],
                 }
                 if sync
@@ -346,6 +354,7 @@ def sync_status(aid, job_id):
         {
             "status": row["status"],
             "result": (row["payload"] or {}).get("result"),
+            "progress": (row["payload"] or {}).get("progress"),
             "safe_error": row["safe_error"],
         }
     )

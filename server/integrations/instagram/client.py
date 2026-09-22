@@ -3,16 +3,24 @@
 import os
 import re
 import uuid
+import logging
 
 import httpx
 from crm.auth import development
 from cryptography.fernet import Fernet, InvalidToken
 
 
+for _logger_name in ("httpx", "httpcore"):
+    # httpx logs full request URLs at INFO. OAuth exchanges contain secrets in
+    # query parameters, so provider traffic must never inherit INFO logging.
+    logging.getLogger(_logger_name).setLevel(logging.WARNING)
+
+
 class ProviderError(Exception):
-    def __init__(self, message, uncertain=False):
+    def __init__(self, message, uncertain=False, code="provider_error"):
         super().__init__(message)
         self.uncertain = uncertain
+        self.code = code
 
 
 def cipher():
@@ -54,18 +62,34 @@ def provider_request(method, url, **kwargs):
         response = httpx.request(
             method, url, timeout=20, follow_redirects=False, **kwargs
         )
+    except httpx.TimeoutException:
+        raise ProviderError(
+            "Instagram request timed out",
+            uncertain=method == "POST",
+            code="provider_timeout",
+        ) from None
     except httpx.TransportError:
         raise ProviderError(
             "Provider connection interrupted. Delivery may be uncertain",
             uncertain=method == "POST",
+            code="provider_network",
         ) from None
     if response.status_code >= 500:
         raise ProviderError(
-            "Instagram is temporarily unavailable", uncertain=method == "POST"
+            "Instagram is temporarily unavailable",
+            uncertain=method == "POST",
+            code="provider_unavailable",
         )
+    if response.status_code == 429:
+        raise ProviderError("Instagram rate limit reached", code="provider_rate_limit")
+    if response.status_code == 401:
+        raise ProviderError("Instagram authorization expired", code="provider_authentication")
+    if response.status_code == 403:
+        raise ProviderError("Instagram permission denied", code="provider_permission")
     if response.status_code >= 400:
         raise ProviderError(
-            "Instagram rejected the request. Check authorization and messaging eligibility"
+            "Instagram rejected the request. Check authorization and messaging eligibility",
+            code="provider_bad_request",
         )
     try:
         data = response.json()
@@ -74,7 +98,9 @@ def provider_request(method, url, **kwargs):
         return data
     except ValueError:
         raise ProviderError(
-            "Unexpected Instagram response", uncertain=method == "POST"
+            "Unexpected Instagram response",
+            uncertain=method == "POST",
+            code="provider_response",
         ) from None
 
 

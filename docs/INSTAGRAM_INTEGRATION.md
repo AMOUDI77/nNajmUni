@@ -1,6 +1,6 @@
 # Instagram integration
 
-This branch implements an Instagram Login provider boundary and a strictly local mock provider. Production uses `META_PROVIDER_MODE=live`; mock mode is rejected unless the app is in explicit local development or testing, and normal development mock mode is rejected on Render. No production account has been connected by this work.
+NajmUni implements an Instagram Login provider boundary and a strictly local mock provider. Production uses `META_PROVIDER_MODE=live`; mock mode is rejected unless the app is in explicit local development or testing, and normal development mock mode is rejected on Render.
 
 ## Contract and validation status
 
@@ -19,7 +19,9 @@ Settings reports platform readiness separately from account connection and never
 
 The backend creates a ten-minute, one-use OAuth state bound to both staff user and session. Callback validation occurs before any provider call. Denied authorization and failed provider calls redirect to Settings with safe result codes. The verified account identity, encrypted token and expiry are stored, followed by a subscribed-app registration. Reconnection updates the same provider-account record. Disconnect clears the local token and stops processing/sending for that account; it does not delete conversation history. Owners should also remove app authorization in Instagram if revocation at the provider is required.
 
-Connected accounts can enqueue a conversation-history sync. The worker follows Meta cursor pagination for conversations and messages, preserves provider timestamps and IDs, and creates contacts, channel identities, conversations and messages transactionally. Repeated syncs use provider IDs and the same message dedupe key as webhooks, so existing records are counted and skipped. The result reports imported conversations/messages and skipped existing messages. The sync imports only history returned by Meta; unavailable older Requests-folder history and other provider limits cannot be reconstructed.
+Connected accounts can enqueue a conversation-history sync. The worker follows Meta cursor pagination for conversations and messages and fetches conversation/message details when list responses contain only object references. It commits each message page independently, preserves provider timestamps and IDs, and updates a durable job heartbeat and progress counters after each batch. A later provider failure therefore preserves valid earlier batches and a retry resumes idempotently. Hard page limits, a two-hour deadline, and repeated-cursor detection prevent an endless job. Repeated syncs use provider conversation/message IDs and the same message dedupe key as webhooks, so existing records are counted and skipped. The sync imports only history returned by Meta; unavailable older Requests-folder history and other provider limits cannot be reconstructed.
+
+Alembic revision `0006_instagram_sync_safety` adds the provider conversation ID and background-job heartbeat. Apply it explicitly before starting the matching worker release; neither Gunicorn nor the worker runs migrations automatically. Web and worker must use the same `DATABASE_URL` and the same `META_TOKEN_ENCRYPTION_KEY`.
 
 Webhook URL: `/api/webhooks/instagram`. GET validates `hub.verify_token`; POST verifies `X-Hub-Signature-256` over raw bytes before parsing. The request only persists a unique envelope and job. Worker normalization handles DMs, quick-reply/postback content and regular comments, ignoring echoes/unsupported events. Message IDs are scoped to the connected account. A replay with a different envelope still cannot create duplicate messages or flows.
 

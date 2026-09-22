@@ -24,15 +24,22 @@ type Integration = {
       id: number;
       status: string;
       result: SyncResult | null;
+      progress: SyncProgress | null;
       safe_error: string | null;
     } | null;
   }[];
 };
 type SyncResult = {
+  pages_processed: number;
+  conversations_seen: number;
   imported_conversations: number;
   imported_messages: number;
   skipped_existing: number;
   unavailable: number;
+};
+type SyncProgress = SyncResult & {
+  state: string;
+  last_progress_at: string | null;
 };
 type Settings = {
   ai_mode: string;
@@ -143,6 +150,7 @@ function Integrations({
   const [showSetup, setShowSetup] = useState(false);
   const [syncing, setSyncing] = useState<number | null>(null);
   const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
+  const [syncProgress, setSyncProgress] = useState<SyncProgress | null>(null);
   if (!data) return error ? <ErrorBanner message={error} /> : <Skeleton />;
   const oauthResult = new URLSearchParams(location.search).get("instagram");
 
@@ -163,25 +171,28 @@ function Integrations({
   async function sync(accountId: number) {
     setSyncing(accountId);
     setSyncResult(null);
+    setSyncProgress(null);
     onError("");
     try {
       const started = await write<{ job_id: number }>(
         `/integrations/instagram/${accountId}/sync`,
         {},
       );
-      for (let attempt = 0; attempt < 120; attempt += 1) {
+      for (let attempt = 0; attempt < 3600; attempt += 1) {
         const result = await crmApi<{
           status: string;
           result: SyncResult | null;
+          progress: SyncProgress | null;
           safe_error: string | null;
         }>(`/integrations/instagram/${accountId}/sync/${started.job_id}`);
+        setSyncProgress(result.progress);
         if (result.status === "SUCCEEDED" && result.result) {
           setSyncResult(result.result);
           return;
         }
         if (result.status === "FAILED")
           throw new Error(result.safe_error || "Conversation sync failed");
-        await new Promise((resolve) => window.setTimeout(resolve, 1000));
+        await new Promise((resolve) => window.setTimeout(resolve, 2000));
       }
       throw new Error("Conversation sync is still running. Check again shortly.");
     } catch (caught) {
@@ -240,6 +251,11 @@ function Integrations({
           .filter((account) => account.status === "CONNECTED")
           .map((account) => {
             const result = syncResult || account.sync?.result;
+            const progress =
+              (syncing === account.id ? syncProgress : null) ||
+              (["QUEUED", "PROCESSING", "RETRYING"].includes(account.sync?.status || "")
+                ? account.sync?.progress
+                : null);
             return (
               <div key={account.id} className="crm-integration-account">
                 <strong>@{account.username || "Instagram account"}</strong>
@@ -249,6 +265,11 @@ function Integrations({
                 <div className="crm-kv"><span>Connection</span><span>{account.connection_health === "HEALTHY" ? "Healthy" : "Reconnect required"}</span></div>
                 <div className="crm-kv"><span>Last webhook</span><span>{date(account.last_webhook_at)}</span></div>
                 <div className="crm-kv"><span>Last sync</span><span>{date(account.last_sync_at)}</span></div>
+                {progress && (
+                  <div className="crm-policy" role="status">
+                    Syncing Instagram... {progress.imported_conversations.toLocaleString()} conversations imported · {progress.imported_messages.toLocaleString()} messages imported · {progress.pages_processed.toLocaleString()} pages processed.
+                  </div>
+                )}
                 {result && (
                   <div className="crm-policy" role="status">
                     Imported: {result.imported_conversations} conversations, {result.imported_messages} messages. Skipped: {result.skipped_existing} existing.

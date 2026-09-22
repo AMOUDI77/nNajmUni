@@ -36,7 +36,7 @@ def test_postgres_alembic_upgrade_preserves_legacy_rows(crm_client, monkeypatch)
     from alembic import command
     from alembic.config import Config
     from sqlalchemy import text
-    from crm.schema_v1 import metadata
+    from crm.schema_v5 import metadata
 
     test_engine = application.DATABASE_ENGINE
     # Fixture engine is restricted to its freshly created UUID test schema.
@@ -58,5 +58,5 @@ def test_postgres_alembic_upgrade_preserves_legacy_rows(crm_client, monkeypatch)
         )
         assert (
             conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-            == "0003_saved_replies"
+            == "0006_instagram_sync_safety"
         )

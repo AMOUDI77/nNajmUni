@@ -23,7 +23,7 @@ os.environ.update(
     CRM_ALLOWED_ORIGINS="http://127.0.0.1:5088",
 )
 from app import app, DATABASE_ENGINE
-from crm.schema_v1 import metadata
+from crm.schema_v5 import metadata
 from crm.demo import seed_demo
 from jobs.worker import run_once
 import crm.ai

@@ -8,7 +8,8 @@ from sqlalchemy.engine import make_url
 import app as application
 from crm.auth import hasher
 from crm.common import now
-from crm.schema_v1 import metadata, staff_users, staff_sessions, audit_events
+from crm.schema_v1 import staff_users, staff_sessions, audit_events
+from crm.schema_v5 import metadata
 
 
 @pytest.fixture
