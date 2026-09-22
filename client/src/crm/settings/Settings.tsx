@@ -276,6 +276,9 @@ function Integrations({
                     {result.unavailable > 0 && ` Unavailable: ${result.unavailable} items Meta did not expose completely.`}
                   </div>
                 )}
+                {account.sync?.status === "FAILED" && account.sync.safe_error && (
+                  <ErrorBanner message={account.sync.safe_error} />
+                )}
                 {admin && (
                   <div className="crm-integration-actions">
                     <button onClick={() => void sync(account.id)} disabled={syncing !== null}>

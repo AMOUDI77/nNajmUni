@@ -167,16 +167,32 @@ def test_page_limit_stops_unbounded_history(crm_client, monkeypatch):
         sync_account(application.DATABASE_ENGINE, aid)
 
 
-def test_final_job_failure_clears_running_state(crm_client, monkeypatch):
+def test_multiple_empty_pages_report_history_access(crm_client, monkeypatch):
+    aid = account(monkeypatch)
+    monkeypatch.setattr(
+        "integrations.instagram.sync.MAX_CONSECUTIVE_EMPTY_CONVERSATION_PAGES", 3
+    )
+    calls = 0
+
+    def provider(method, url, **kwargs):
+        nonlocal calls
+        calls += 1
+        return {"data": [], "paging": {"cursors": {"after": f"page-{calls}"}}}
+
+    monkeypatch.setattr("integrations.instagram.sync.provider_request", provider)
+    with pytest.raises(ProviderError) as caught:
+        sync_account(application.DATABASE_ENGINE, aid)
+    assert caught.value.code == "history_access"
+    assert calls == 3
+
+
+def test_non_retryable_job_failure_clears_running_state(crm_client, monkeypatch):
     aid = account(monkeypatch)
     headers = login(crm_client)
     started = crm_client.post(
         f"/api/crm/integrations/instagram/{aid}/sync", json={}, headers=headers
     )
     jid = started.json["job_id"]
-    with application.DATABASE_ENGINE.begin() as conn:
-        conn.execute(update(jobs).where(jobs.c.id == jid).values(attempts=4))
-
     def fail(*args, **kwargs):
         raise ProviderError("secret provider detail", code="provider_permission")
 
@@ -185,6 +201,7 @@ def test_final_job_failure_clears_running_state(crm_client, monkeypatch):
     with application.DATABASE_ENGINE.connect() as conn:
         failed = conn.execute(select(jobs).where(jobs.c.id == jid)).mappings().one()
     assert failed["status"] == "FAILED"
+    assert failed["attempts"] == 1
     assert failed["completed_at"] is not None
     assert failed["lease_token"] is None
     assert failed["safe_error"] == (

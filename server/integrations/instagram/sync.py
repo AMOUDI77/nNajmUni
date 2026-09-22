@@ -16,6 +16,7 @@ from .client import ProviderError, decrypt, graph_url, provider_request
 
 MAX_CONVERSATION_PAGES = 5_000
 MAX_MESSAGE_PAGES_PER_CONVERSATION = 500
+MAX_CONSECUTIVE_EMPTY_CONVERSATION_PAGES = 5
 MAX_SYNC_SECONDS = 2 * 60 * 60
 
 
@@ -397,6 +398,7 @@ def sync_account(db_engine, account_id, job=None):
     }
     _heartbeat(db_engine, job, progress)
 
+    consecutive_empty_pages = 0
     for conversation_page in _page(
         account["provider_account_id"] + "/conversations",
         token,
@@ -405,6 +407,19 @@ def sync_account(db_engine, account_id, job=None):
         check_deadline,
     ):
         progress["pages_processed"] += 1
+        if not conversation_page:
+            consecutive_empty_pages += 1
+            _heartbeat(db_engine, job, progress)
+            if (
+                consecutive_empty_pages
+                >= MAX_CONSECUTIVE_EMPTY_CONVERSATION_PAGES
+            ):
+                raise ProviderError(
+                    "Instagram did not expose conversations across multiple history pages",
+                    code="history_access",
+                )
+            continue
+        consecutive_empty_pages = 0
         for raw_thread in conversation_page:
             if not isinstance(raw_thread, dict) or not raw_thread.get("id"):
                 progress["unavailable"] += 1
