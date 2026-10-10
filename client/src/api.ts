@@ -5,7 +5,7 @@ import { apiUrl } from './config';
 const BASE = '/api';
 
 async function get<T>(path: string): Promise<T> {
-  const res = await fetch(apiUrl(`${BASE}${path}`));
+  const res = await fetch(apiUrl(`${BASE}${path}`), { signal: AbortSignal.timeout(15000) });
   if (!res.ok) throw new Error(`API error ${res.status}`);
   return res.json() as Promise<T>;
 }
@@ -15,6 +15,7 @@ async function post<T>(path: string, body: unknown): Promise<T> {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(15000),
   });
   if (!res.ok) throw new Error(`API error ${res.status}`);
   return res.json() as Promise<T>;
@@ -56,10 +57,10 @@ export const api = {
     list: async (params?: Record<string, string>) => {
       try {
         const qs = params ? '?' + new URLSearchParams(params).toString() : '';
-        return await get<{ data: University[]; total: number }>(`/universities${qs}`);
+        return await get<{ data: University[]; total: number; offline?: boolean }>(`/universities${qs}`);
       } catch (err) {
         const data = filterUniversities(params);
-        return { data, total: UNIVERSITIES.length };
+        return { data, total: UNIVERSITIES.length, offline: true };
       }
     },
     get: async (id: number) => {
@@ -88,7 +89,7 @@ export const api = {
     list: async (params?: Record<string, string>) => {
       try {
         const qs = params ? '?' + new URLSearchParams(params).toString() : '';
-        return await get<{ data: Program[]; fields: string[] }>(`/programs${qs}`);
+        return await get<{ data: Program[]; fields: string[]; offline?: boolean }>(`/programs${qs}`);
       } catch (err) {
         let data = [...PROGRAMS];
         if (params?.field) data = data.filter(p => p.field === params.field);
@@ -99,18 +100,13 @@ export const api = {
           data = data.filter(p => p.name.toLowerCase().includes(q));
         }
         const fields = [...new Set(PROGRAMS.map(p => p.field))].sort();
-        return { data, fields };
+        return { data, fields, offline: true };
       }
     },
   },
   leads: {
     submit: async (phone: string, name?: string, source?: string) => {
-      try {
-        return await post<{ ok: boolean; existing: boolean }>('/leads', { phone, name, source });
-      } catch (err) {
-        if (!import.meta.env.DEV) throw err;
-        return { ok: true, existing: false };
-      }
+      return post<{ ok: boolean; existing: boolean }>('/leads', { phone, name, source });
     },
     qualify: (lead: Record<string, string>) =>
       post<{ ok: boolean; existing: boolean; score: number; priority: string }>('/leads', lead),
