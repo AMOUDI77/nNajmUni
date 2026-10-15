@@ -244,7 +244,7 @@ export default function Programs() {
               ? 'احجز جلسة مجانية. سنراجع خلفيتك وأهدافك ونقترح البرنامج الأنسب لك.'
               : 'Book a free 1-on-1 session. Our advisors will assess your background and goals and recommend the right programme.'}
           </p>
-          <a href="/#booking-section"
+          <a href="/apply"
             style={{
               display: 'inline-flex',
               alignItems: 'center',

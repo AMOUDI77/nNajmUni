@@ -190,7 +190,10 @@ export default function BudgetCalculator() {
           <div style={{ background: 'linear-gradient(135deg, #111B3D, #4F6BFF)', borderRadius: 24, padding: 'clamp(24px,4vw,36px)', boxShadow: '0 24px 60px rgba(8,19,49,0.16)', flex: '1 1 0', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
             {[
               { label: t('budget.tuition'), value: `RM ${tuition.toLocaleString()}` },
-              { label: t('budget.living'), value: `RM ${totalMonthly.toLocaleString()}` },
+              { label: 'السكن / شهريًا', value: `RM ${(accomItem.monthly ?? 0).toLocaleString()}` },
+              { label: 'المعيشة / شهريًا', value: `RM ${(lifeItem.monthly ?? 0).toLocaleString()}` },
+              { label: 'التأشيرة والتأمين', value: 'تحتاج تأكيدًا' },
+              { label: 'رسوم لمرة واحدة / ودائع', value: 'تحتاج تأكيدًا' },
               { label: t('budget.total'), value: `RM ${totalYearly.toLocaleString()}`, big: true },
             ].map(({ label, value, big }) => (
               <div key={label} className="budget-result-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 0', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
@@ -201,6 +204,7 @@ export default function BudgetCalculator() {
           </div>
 
           <div className="budget-card" style={{ background: CARD, borderRadius: 20, padding: 24, border: `1px solid ${BORDER}`, flex: '0 0 auto' }}>
+            <p style={{fontSize:13,marginBottom:16}}>المجموع تقديري للدراسة والسكن والمعيشة فقط؛ لا يشمل التأشيرة والتأمين والودائع والرسوم الإضافية غير المتاحة. الرسوم الدراسية هنا افتراض حسب نوع الجامعة.</p>
             <div style={{ fontSize: 13, fontWeight: 700, color: TEXT, marginBottom: 14 }}>{t('budget.included')}</div>
             {[
               { icon: '🎓', text: t('budget.includedTuition') },

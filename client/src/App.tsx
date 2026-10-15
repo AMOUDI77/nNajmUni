@@ -5,6 +5,13 @@ import Footer from './components/Footer';
 import WhatsAppFAB from './components/WhatsAppFAB';
 import Home from './pages/Home';
 
+const Explorer = lazy(() => import('./pages/Explorer'));
+const ProgramDetail = lazy(() => import('./pages/ProgramDetail'));
+const ApplicationAssistance = lazy(() => import('./pages/ApplicationAssistance'));
+const Costs = lazy(() => import('./components/BudgetCalculator'));
+const Booking = lazy(() => import('./components/BookingSection'));
+const Comparison = lazy(() => import('./components/JourneyTimeline').then(m => ({default:m.ComparisonPanel})));
+
 const Universities    = lazy(() => import('./pages/Universities'));
 const UniversityDetail = lazy(() => import('./pages/UniversityDetail'));
 const Institutes      = lazy(() => import('./pages/Institutes'));
@@ -50,6 +57,12 @@ export default function App() {
       <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route path="/"                 element={<Home />} />
+          <Route path="/explore" element={<Explorer />} />
+          <Route path="/programs/:id" element={<ProgramDetail />} />
+          <Route path="/apply" element={<ApplicationAssistance />} />
+          <Route path="/costs" element={<main className="student-page"><p>تقديرات تخطيطية بالرينجت الماليزي، وليست عرض سعر. راجع الرسوم الفعلية والتأمين والتأشيرة والودائع مع المستشار.</p><Costs /></main>} />
+          <Route path="/compare" element={<main className="student-page"><h1>قارن الجامعات</h1><p>مقارنة استرشادية من بيانات الدليل؛ النتيجة ليست حكمًا على أهليتك أو ضمانًا للقبول.</p><Comparison /></main>} />
+          <Route path="/consultation" element={<main className="student-page"><Booking /></main>} />
           <Route path="/universities"     element={<Universities />} />
           <Route path="/universities/:id" element={<UniversityDetail />} />
           <Route path="/institutes"       element={<Institutes />} />
@@ -62,7 +75,7 @@ export default function App() {
         </Routes>
       </Suspense>
       {!isAdmin && <Footer />}
-      {!isAdmin && <WhatsAppFAB />}
+      {!isAdmin && pathname !== '/apply' && pathname !== '/consultation' && <WhatsAppFAB />}
     </>
   );
 }

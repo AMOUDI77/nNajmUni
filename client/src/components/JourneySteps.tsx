@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { usePreferences } from '../i18n';
 
-const WA = 'https://www.instagram.com/najm.uni/';
+import { whatsappUrl } from '../discovery';
+const WA = whatsappUrl() || '/apply?intent=consultation';
 
 const STEPS = [
   {
@@ -236,7 +237,7 @@ export default function JourneySteps() {
               {t('journey.bookWa')}
             </a>
             <button
-              onClick={() => document.getElementById('booking-section')?.scrollIntoView({ behavior: 'smooth' })}
+              onClick={() => window.location.assign('/consultation')}
               style={{
                 background: '#fff', color: '#111B3D', border: '1.5px solid #E4E4E7',
                 borderRadius: 16, padding: '14px 30px', fontSize: 15, fontWeight: 700,

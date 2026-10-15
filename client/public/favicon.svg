@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <title>NajmUni</title>
+  <rect width="512" height="512" rx="112" fill="#fff"/>
+  <path fill="#121526" d="M58 218 268 89a25 25 0 0 1 26 0l132 83c35 22 47 54 47 87 0 29-21 51-60 64H165L58 256Z"/>
+  <path fill="none" stroke="#121526" stroke-width="9" stroke-linecap="round" d="M76 236v61l-7 27"/>
+  <circle cx="76" cy="297" r="8" fill="#121526"/>
+  <path fill="#73c596" d="M280 168c-25 75-55 104-121 123 66 20 99 55 121 122 23-67 56-102 121-122-65-19-97-48-121-123Z"/>
+</svg>

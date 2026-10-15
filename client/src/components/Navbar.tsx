@@ -5,13 +5,13 @@ import { C } from '../styles/theme';
 import { usePreferences } from '../i18n';
 
 const links = [
-  { key: 'nav.universities' as const, href: '/universities' },
+  { key: 'nav.universities' as const, href: '/explore' },
   { key: 'nav.institutes' as const,    href: '/institutes'    },
   { key: 'nav.programs' as const,     href: '/programs'     },
   { key: 'nav.studyPlan' as const,    href: '/study-plan'   },
   { key: 'nav.services' as const,     href: '/#services'    },
   { key: 'nav.visa' as const,         href: '/#faq'         },
-  { key: 'nav.contact' as const,      href: '/#cta'         },
+  { key: 'nav.contact' as const,      href: '/consultation'         },
 ];
 
 function scrollToHash(hash: string) {
@@ -129,14 +129,14 @@ export default function Navbar() {
             </button>
           </div>
 
-          <a className="nav-apply" href="/#cta" onClick={e => handleClick(e, '/#cta')}
+          <a className="nav-apply" href="/apply" onClick={e => handleClick(e, '/apply')}
             style={{ background: 'linear-gradient(135deg, #7B61FF 0%, #4F6BFF 100%)', color: '#fff', borderRadius: 999, padding: '10px 18px', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0, textDecoration: 'none', boxShadow: '0 14px 30px rgba(79,107,255,0.24)', transition: 'transform 0.2s, box-shadow 0.2s', display: 'inline-block' }}
             onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 18px 36px rgba(79,107,255,0.32)'; }}
             onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 14px 30px rgba(79,107,255,0.24)'; }}>
             {t('nav.apply')}
           </a>
 
-          <button className="nav-hamburger" aria-label={menuOpen ? t('nav.closeMenu') : t('nav.openMenu')}
+          <button className="nav-hamburger" aria-expanded={menuOpen} aria-label={menuOpen ? t('nav.closeMenu') : t('nav.openMenu')}
             onClick={() => setMenuOpen(o => !o)}
             style={{ display: 'none', width: 40, height: 40, borderRadius: 12, border: '1px solid transparent', background: 'transparent', cursor: 'pointer', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginInlineStart: 'auto', transition: 'all 0.2s' }}>
             {menuOpen ? (
@@ -169,7 +169,7 @@ export default function Navbar() {
             <button type="button" onClick={toggleLanguage} style={{ ...prefButtonStyle, borderRadius: 12, minHeight: 46, marginBottom: 10, background: '#F4F4F5' }}>
               {t('nav.language')}
             </button>
-            <a href="/#cta" onClick={e => handleClick(e, '/#cta')}
+            <a href="/apply" onClick={e => handleClick(e, '/apply')}
               style={{ display: 'block', textAlign: 'center', background: 'linear-gradient(135deg, #7B61FF 0%, #4F6BFF 100%)', color: '#fff', borderRadius: 12, padding: '14px', fontSize: 15, fontWeight: 700, textDecoration: 'none' }}>
               {t('nav.apply')}
             </a>

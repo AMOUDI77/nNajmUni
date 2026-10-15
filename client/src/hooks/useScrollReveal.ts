@@ -13,6 +13,11 @@ export function useScrollReveal<T extends HTMLElement = HTMLDivElement>(opts?: O
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      el.style.opacity = '1';
+      el.style.transform = 'none';
+      return;
+    }
 
     const from =
       direction === 'up' ? 'translateY(40px)' :

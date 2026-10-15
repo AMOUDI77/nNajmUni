@@ -14,6 +14,9 @@ export interface University {
   established: number;
   students_count: number;
   programs?: Program[];
+  source_url?: string;
+  catalog_version?: string;
+  coverage?: string;
 }
 
 export interface Program {
@@ -23,12 +26,16 @@ export interface Program {
   university_abbr?: string;
   university_location?: string;
   name: string;
-  level: 'foundation' | 'diploma' | 'bachelor' | 'master' | 'phd';
-  duration_years: number;
-  tuition_per_year: number;
+  level: 'foundation' | 'diploma' | 'bachelor' | 'master' | 'phd' | 'certificate' | 'postgraduate_diploma' | 'other';
+  duration_years: number | null;
+  tuition_per_year: number | null;
   field: string;
   description: string;
   intake: string;
+  source_url?: string;
+  source_name?: string;
+  source_checked_at?: string;
+  verification_status?: 'reference_only' | 'official';
 }
 
 export interface Institute {

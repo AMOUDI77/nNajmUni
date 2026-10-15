@@ -1,6 +1,6 @@
 def test_catalog_crud_and_program_relationship(client, admin_headers):
     uni = client.post('/api/admin/universities', json={
-        'abbr': 'TEST', 'name': 'Test University', 'type': 'private', 'location': 'KL'},
+        'abbr': 'APU', 'name': 'Test University', 'type': 'private', 'location': 'KL'},
         headers=admin_headers)
     assert uni.status_code == 201
     uid = uni.json['university']['id']
@@ -52,6 +52,21 @@ def test_reservation_create_update(client, admin_headers):
     assert client.patch(f"/api/admin/reservations/{row['id']}",
                         json={'status': 'handled'}, headers=admin_headers).status_code == 200
     assert client.get('/api/admin/reservations', headers=admin_headers).json['data'][0]['status'] == 'handled'
+
+
+def test_short_inquiry_preserves_existing_qualification(client, admin_headers):
+    client.post('/api/leads', json={'phone': '+15555550189', 'name': 'Existing',
+                                  'nationality': 'Yemen', 'grade': '85',
+                                  'specialization': 'Software Engineering', 'passport_ready': 'yes'})
+    result = client.post('/api/leads', json={'phone': '+15555550189', 'name': 'Updated',
+                                           'qualification': '', 'specialization': '',
+                                           'source': 'application-assistance'})
+    assert result.status_code == 200 and result.json['existing']
+    lead = client.get('/api/admin/leads', headers=admin_headers).json['data'][0]
+    assert lead['name'] == 'Updated'
+    assert lead['nationality'] == 'Yemen' and lead['grade'] == '85'
+    assert lead['specialization'] == 'Software Engineering'
+    assert lead['passport_ready'] == 'yes'
 
 
 def test_student_crud_and_access(client, student_headers, admin_headers):

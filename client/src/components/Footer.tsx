@@ -6,7 +6,7 @@ import { usePreferences, type TranslationKey } from '../i18n';
 const cols: Array<{ titleKey: TranslationKey; links: Array<[TranslationKey | string, string]> }> = [
   { titleKey: 'footer.services', links: [['footer.admissions', '/#services'], ['footer.visa', '/#faq'], ['footer.accommodation', '/#services'], ['footer.scholarships', '/#services']] },
   { titleKey: 'footer.universities', links: [['UM', '/universities'], ['USM', '/universities'], ['APU', '/universities'], ['MMU', '/universities'], ['UTAR', '/universities']] },
-  { titleKey: 'footer.company', links: [['footer.about', '/#services'], ['footer.contact', '/#cta'], ['footer.privacy', '/#faq'], ['footer.terms', '/#faq']] },
+  { titleKey: 'footer.company', links: [['footer.about', '/#services'], ['footer.contact', '/consultation'], ['footer.privacy', '/#faq'], ['footer.terms', '/#faq']] },
 ];
 
 export default function Footer() {
@@ -24,6 +24,11 @@ export default function Footer() {
             <p style={{ lineHeight: 1.7, maxWidth: 260, color: 'rgba(255,255,255,0.5)' }}>
               {t('footer.copy')}
             </p>
+            <div style={{display:'flex',flexWrap:'wrap',gap:16,marginTop:18}}>
+              <Link to="/explore">اكتشف التخصصات</Link>
+              <Link to="/costs">حاسبة الميزانية</Link>
+              <Link to="/compare">مقارنة الجامعات</Link>
+            </div>
           </div>
           {cols.map(col => (
             <div key={col.titleKey}>

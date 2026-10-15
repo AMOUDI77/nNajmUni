@@ -1,3 +1,4 @@
+import { institutionLogos as OFFICIAL_LOGOS } from '../institutionLogos';
 import { useState, useEffect, memo } from 'react';
 import { C } from '../styles/theme';
 import { api } from '../api';
@@ -14,18 +15,7 @@ const FALLBACK_INSTITUTES = [
   { id: 'ems', abbr: 'EMS',             domain: 'ems.edu.my',          location: 'Kuala Lumpur' },
 ];
 
-const OFFICIAL_LOGOS: Record<string, string> = {
-  USM: '/official-logos/usm.jpg',
-  HWU: '/official-logos/heriot-watt.png',
-  LINCOLN: '/official-logos/lincoln.png',
-  SUNWAY: '/official-logos/sunway.avif',
-  "TAYLOR'S": '/official-logos/taylors.jpg',
-  UNICAM: '/official-logos/unicam.png',
-  CYBERJAYA: '/official-logos/cyberjaya.jpg',
-  BIGBEN: '/official-logos/big-ben.png',
-  'British Council': '/official-logos/british-council.png',
-  ELEC: '/official-logos/elec.jpg',
-};
+
 
 type StripItem = { id: string | number; abbr: string; domain: string | null; location: string };
 

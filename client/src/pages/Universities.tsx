@@ -1,20 +1,13 @@
+import { institutionLogos as OFFICIAL_LOGOS } from '../institutionLogos';
 import { useState, useEffect, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import type { University } from '../types';
 import { C } from '../styles/theme';
-import { useDebounce } from '../hooks/useDebounce';
+import { institutionSearchNames, searchScore } from '../catalogSearch';
 import { usePreferences } from '../i18n';
 
-const OFFICIAL_LOGOS: Record<string, string> = {
-  USM: '/official-logos/usm.jpg',
-  HWU: '/official-logos/heriot-watt.png',
-  LINCOLN: '/official-logos/lincoln.png',
-  SUNWAY: '/official-logos/sunway.avif',
-  "TAYLOR'S": '/official-logos/taylors.jpg',
-  UNICAM: '/official-logos/unicam.png',
-  CYBERJAYA: '/official-logos/cyberjaya.jpg',
-};
+
 
 const UniLogo = memo(function UniLogo({ uni, size = 52 }: { uni: University; size?: number }) {
   const [failed, setFailed] = useState(false);
@@ -89,7 +82,7 @@ const UniCard = memo(function UniCard({ uni, onClick }: { uni: University; onCli
           <UniLogo uni={uni} size={52} />
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
             <span style={{ fontSize: 10, fontWeight: 600, color: '#4F6BFF', background: '#F3F5FF', borderRadius: 20, padding: '3px 10px' }}>
-              {typeLabel(uni.type)}
+              {uni.abbr === 'UTMSPACE' ? 'مسار برامج تابع لـ UTM' : typeLabel(uni.type)}
             </span>
             {uni.qs_ranking && (
               <span style={{ fontSize: 10, fontWeight: 600, color: C.textMuted }}>QS #{uni.qs_ranking}</span>
@@ -117,22 +110,20 @@ export default function Universities() {
   const { t } = usePreferences();
   const typeLabel = useTypeLabel();
   const navigate = useNavigate();
-  const [unis, setUnis] = useState<University[]>([]);
+  const [allUnis, setUnis] = useState<University[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
 
-  const debouncedQ = useDebounce(q, 280);
+  const unis = allUnis.map(u=>({...u,score:searchScore(q,institutionSearchNames(u.name,u.abbr))})).filter(u=>u.score>0 && (!typeFilter || u.type===typeFilter)).sort((a,b)=>b.score-a.score);
 
   useEffect(() => {
     setLoading(true);
     const params: Record<string, string> = { limit: '50' };
-    if (debouncedQ) params.q = debouncedQ;
-    if (typeFilter) params.type = typeFilter;
     api.universities.list(params)
       .then(r => { setUnis(r.data); setLoading(false); })
       .catch(() => setLoading(false));
-  }, [debouncedQ, typeFilter]);
+  }, []);
 
   return (
     <>

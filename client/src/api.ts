@@ -15,6 +15,7 @@ async function post<T>(path: string, body: unknown): Promise<T> {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(15000),
   });
   if (!res.ok) throw new Error(`API error ${res.status}`);
   return res.json() as Promise<T>;
@@ -105,12 +106,7 @@ export const api = {
   },
   leads: {
     submit: async (phone: string, name?: string, source?: string) => {
-      try {
-        return await post<{ ok: boolean; existing: boolean }>('/leads', { phone, name, source });
-      } catch (err) {
-        if (!import.meta.env.DEV) throw err;
-        return { ok: true, existing: false };
-      }
+      return await post<{ ok: boolean; existing: boolean }>('/leads', { phone, name, source });
     },
     qualify: (lead: Record<string, string>) =>
       post<{ ok: boolean; existing: boolean; score: number; priority: string }>('/leads', lead),

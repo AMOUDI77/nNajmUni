@@ -83,6 +83,28 @@ https://najmuni.com,https://www.najmuni.com
 
 ## Render Notes
 
+### Partner catalog release — 2026-10-15
+
+This release includes the 22-partner catalog and its reference program data. Deploy
+the frontend and API from the same commit. Existing databases require an explicit
+catalog import; deploying the code alone does not import the new records.
+
+After deploying the backend, run this from the repository root in the backend
+service shell, using that service's configured `DATABASE_URL`:
+
+```bash
+python server/partner_catalog.py --yes
+```
+
+If the shell starts inside `server`, use `python partner_catalog.py --yes`.
+The import preserves existing records and counselor edits, inserts missing programs,
+and stops on university ID conflicts. After it succeeds, check `/api/universities`
+for the 22 partner institutions and `/explore` for program search. The initial
+reference snapshot contains 2233 programs; existing counselor-managed records may
+increase that count. Fees, availability and admissions conditions still need
+official confirmation. See [catalog release notes](docs/PARTNER_CATALOG_2026-10-15.md)
+for coverage, provenance and validation.
+
 Production Flask uses Render PostgreSQL 17 through the server-side `DATABASE_URL`. React remains the frontend. The six existing business tables were moved from SQLite and verified record by record; see `docs/POSTGRES_MIGRATION_RUNBOOK.md` for the cutover evidence and recovery procedure.
 
 `DB_PATH=/var/data/najmuni.db` remains configured as a rollback setting. The original SQLite file and a separate pre-cutover backup remain on the Render persistent disk. Do not run a second production SQLite writer or remove those files during the recovery period. After PostgreSQL receives new records, switching back to SQLite requires reconciling those PostgreSQL-only writes first.

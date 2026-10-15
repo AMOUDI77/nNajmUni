@@ -7,7 +7,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:5000',
+        target: process.env.NAJMUNI_DEV_API_TARGET || 'http://localhost:5000',
         changeOrigin: true,
       },
     },

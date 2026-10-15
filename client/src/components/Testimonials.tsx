@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { C } from '../styles/theme';
 import { usePreferences } from '../i18n';
 
+// All legacy entries await owner verification and photo permission.
+const APPROVED_TESTIMONIALS_AVAILABLE = false;
 const testimonials = [
   {
     name: 'Khaled Abdullah',
@@ -47,6 +49,8 @@ export default function Testimonials() {
   const [active, setActive] = useState(0);
   const activeTestimonial = testimonials[active];
 
+  // Evidence and photo permission have not been supplied. Preserve design for approved records.
+  if (!APPROVED_TESTIMONIALS_AVAILABLE) return null;
   return (
     <section style={{ padding: 'clamp(52px,8vw,80px) clamp(20px,4vw,40px)', background: '#fff' }} id="testimonials">
       <div style={{ maxWidth: 1200, margin: '0 auto' }}>

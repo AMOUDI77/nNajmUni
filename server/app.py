@@ -191,8 +191,27 @@ def rate_limit(bucket, limit=30, window=300):
 
 # ── Universities ──────────────────────────────────────────────────────────────
 
+def public_program_rows(db, records):
+    """Hide only unchanged legacy sample rows after a sourced catalog is imported.
+
+    Counselor-created and edited programs stay visible. Nothing is deleted.
+    """
+    from partner_catalog import enrich_program
+    imported = {r[0] for r in db.execute('SELECT DISTINCT university_id FROM programs WHERE id>=100000')}
+    output = []
+    keys = ('name', 'level', 'duration_years', 'tuition_per_year', 'field', 'description', 'intake')
+    for p in records:
+        index = p['id'] - 1
+        legacy = (p['university_id'] in imported and 0 <= index < len(PROGRAMS)
+                  and tuple(p.get(k) for k in keys) == tuple(PROGRAMS[index][1:]))
+        if not legacy:
+            output.append(enrich_program(p))
+    return output
+
+
 @app.get('/api/universities')
 def list_universities():
+    from partner_catalog import public_university
     db   = get_db()
     q    = request.args.get('q', '')
     kind = request.args.get('type', '')
@@ -201,17 +220,18 @@ def list_universities():
     if kind: sql += ' AND type=?';                                              params.append(kind)
     if q:    sql += ' AND (name LIKE ? OR abbr LIKE ? OR description LIKE ?)'; params += [f'%{q}%']*3
     sql += ' ORDER BY COALESCE(qs_ranking,9999), name'
-    data  = rows(db.execute(sql, params))
-    total = db.execute('SELECT COUNT(*) FROM universities').fetchone()[0]
+    data  = [u for u in rows(db.execute(sql, params)) if public_university(u)]
+    total = len(data)
     return jsonify(data=data, total=total)
 
 @app.get('/api/universities/<int:uid>')
 def get_university(uid):
+    from partner_catalog import public_university, enrich_program
     db = get_db()
     data = rows(db.execute('SELECT * FROM universities WHERE id=?', [uid]))
-    if not data: return jsonify(error='Not found'), 404
+    if not data or not public_university(data[0]): return jsonify(error='Not found'), 404
     progs = rows(db.execute('SELECT * FROM programs WHERE university_id=? ORDER BY level,name', [uid]))
-    return jsonify(**data[0], programs=progs)
+    return jsonify(**data[0], programs=public_program_rows(db, progs))
 
 
 @app.get('/api/institutes')
@@ -237,6 +257,7 @@ def list_institutes():
 
 @app.get('/api/programs')
 def list_programs():
+    from partner_catalog import ALLOWED, enrich_program
     db    = get_db()
     field = request.args.get('field', '')
     level = request.args.get('level', '')
@@ -252,7 +273,8 @@ def list_programs():
     if q:     sql += ' AND (p.name LIKE ? OR p.description LIKE ?)'; params += [f'%{q}%']*2
     sql  += ' ORDER BY p.tuition_per_year'
     data   = rows(db.execute(sql, params))
-    fields = [r[0] for r in db.execute('SELECT DISTINCT field FROM programs ORDER BY field')]
+    data = public_program_rows(db, [p for p in data if p['university_abbr'].upper() in ALLOWED])
+    fields = sorted({p['field'] for p in data})
     return jsonify(data=data, fields=fields)
 
 
@@ -269,12 +291,18 @@ def create_lead():
     normalized_phone = re.sub(r'[^\d+]', '', phone)
     if not normalized_phone or not re.match(r'^\+?\d{7,15}$', normalized_phone):
         return jsonify(error='Valid phone number required'), 400
+    db = get_db()
+    existing = db.execute('SELECT * FROM leads WHERE phone=?', [normalized_phone]).fetchone()
     fields = {
         key: str(body.get(key, '')).strip()[:160]
         for key in ('nationality', 'study_level', 'specialization', 'qualification',
                     'grade', 'english_level', 'preferred_start', 'passport_ready',
                     'financial_readiness', 'preferred_university')
     }
+    # A short follow-up inquiry must not erase an already qualified student profile.
+    if existing:
+        name = name or existing['name'] or ''
+        fields = {key: value or existing[key] or '' for key, value in fields.items()}
     score = 10
     score += {'في أقرب وقت ممكن': 25, 'خلال 3–6 أشهر': 18, 'خلال 6–12 شهرًا': 8}.get(fields['preferred_start'], 0)
     score += {'نعم': 20, 'قيد التجهيز': 10}.get(fields['passport_ready'], 0)
@@ -282,14 +310,12 @@ def create_lead():
     score += min(15, sum(bool(fields[key]) for key in ('nationality', 'study_level', 'specialization', 'qualification', 'english_level')) * 3)
     priority = 'high' if score >= 70 else 'medium' if score >= 40 else 'low'
     category = 'ready' if priority == 'high' else 'follow_up' if priority == 'medium' else 'inquiry'
-    db = get_db()
-    existing = db.execute('SELECT id FROM leads WHERE phone=?', [normalized_phone]).fetchone()
     values = [name or None, source, *fields.values(), score, priority, category]
     if existing:
         db.execute('''UPDATE leads SET name=?, source=?, nationality=?, study_level=?, specialization=?,
                    qualification=?, grade=?, english_level=?, preferred_start=?, passport_ready=?,
                    financial_readiness=?, preferred_university=?, score=?, priority=?, category=?, status='new', created_at=datetime('now')
-                   WHERE id=?''', [*values, existing[0]])
+                   WHERE id=?''', [*values, existing['id']])
     else:
         db.execute('''INSERT INTO leads
                    (phone,name,source,nationality,study_level,specialization,qualification,grade,
@@ -1150,23 +1176,8 @@ INSTITUTES = [
 
 
 def seed(db):
-    uni_map = {}
-    for row in UNIVERSITIES:
-        cur = db.execute(
-            'INSERT INTO universities (abbr,name,type,location,qs_ranking,color,description,website,domain,tuition_min,tuition_max,established,students_count) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
-            row
-        )
-        uni_map[row[0]] = cur.lastrowid
-
-    for prog in PROGRAMS:
-        abbr, name, level, dur, fee, field, desc, intake = prog
-        uid = uni_map.get(abbr)
-        if uid:
-            db.execute(
-                'INSERT INTO programs (university_id,name,level,duration_years,tuition_per_year,field,description,intake) VALUES (?,?,?,?,?,?,?,?)',
-                [uid, name, level, dur, fee, field, desc, intake]
-            )
-    print(f'Seeded {len(UNIVERSITIES)} universities and {len(PROGRAMS)} programs')
+    from partner_catalog import import_catalog
+    import_catalog(db)
 
 
 def seed_institutes(db):

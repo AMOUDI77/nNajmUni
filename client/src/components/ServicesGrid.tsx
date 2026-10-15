@@ -18,7 +18,6 @@ const SERVICES: Array<{ icon: React.ReactNode; titleKey: TranslationKey; descKey
   { icon: icons.Plane,   titleKey:'services.arrival',       descKey:'services.arrivalCopy' },
   { icon: icons.Card,    titleKey:'services.banking',       descKey:'services.bankingCopy' },
   { icon: icons.Book,    titleKey:'services.programme',     descKey:'services.programmeCopy' },
-  { icon: icons.Award,   titleKey:'services.scholarships',  descKey:'services.scholarshipsCopy' },
   { icon: icons.Message, titleKey:'services.support',       descKey:'services.supportCopy' },
 ];
 

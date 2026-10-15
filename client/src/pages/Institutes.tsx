@@ -1,4 +1,5 @@
 import { useState, useEffect, memo } from 'react';
+import AdvisorLink from '../components/AdvisorLink';
 import { api } from '../api';
 import type { Institute } from '../types';
 import { C } from '../styles/theme';
@@ -112,6 +113,8 @@ const InstituteCard = memo(function InstituteCard({ institute }: { institute: In
           <div>
             <div style={{ fontSize: 11, color: C.textMuted, marginBottom: 2 }}>{t('institutes.tuition')}</div>
             <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{formatTuition(institute.tuition_min, institute.tuition_max)}</div>
+            <p style={{fontSize:12}}>الرسوم والمدة ومواعيد البداية تحتاج تأكيدًا.</p>
+            <AdvisorLink context={{university:institute.name, program:'دراسة اللغة'}}>استفسر عن المعهد</AdvisorLink>
           </div>
         </div>
       </div>

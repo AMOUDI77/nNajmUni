@@ -1,14 +1,15 @@
 import { useState } from 'react';
+import { whatsappUrl, applicationUrl } from '../discovery';
 
 export default function WhatsAppFAB() {
   const [hov, setHov] = useState(false);
 
   return (
     <a
-      href="https://www.instagram.com/najm.uni/"
+      href={whatsappUrl() || applicationUrl({}, true)}
       target="_blank"
       rel="noopener noreferrer"
-      aria-label="تواصل معنا على إنستغرام"
+      aria-label="تحدث مع مستشار"
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
       style={{
@@ -38,7 +39,7 @@ export default function WhatsAppFAB() {
       <svg viewBox="0 0 24 24" width={24} height={24} fill="none" stroke="white" strokeWidth="2" style={{ flexShrink: 0 }}>
         <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/>
       </svg>
-      {hov && <span>تواصل عبر إنستغرام</span>}
+      {hov && <span>تحدث مع مستشار</span>}
     </a>
   );
 }

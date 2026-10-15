@@ -5,10 +5,10 @@ import type { StudyPlanProfile, StudyPlanResult, StudyPlanUniversity } from '../
 import { getUniversityLogo } from '../components/UniversityLogo';
 
 const categoryFields: Record<string, string[]> = {
-  'computer-science': ['Technology'], cybersecurity: ['Technology'], 'software-engineering': ['Technology'],
-  'artificial-intelligence': ['Technology'], business: ['Business'], engineering: ['Engineering'],
-  'accounting-finance': ['Business'], medicine: ['Medicine'], science: ['Science'], law: ['Law'],
-  design: ['Arts & Design'], undecided: [],
+  'computer-science': ['Technology', 'Computer Science & IT'], cybersecurity: ['Technology', 'Computer Science & IT'], 'software-engineering': ['Technology', 'Computer Science & IT'],
+  'artificial-intelligence': ['Technology', 'Computer Science & IT'], business: ['Business', 'Business & Management'], engineering: ['Engineering', 'Engineering & Applied Sciences'],
+  'accounting-finance': ['Business', 'Business & Management'], medicine: ['Medicine', 'Health & Medicine'], science: ['Science', 'Natural Sciences'], law: ['Law', 'Law & Legal Studies'],
+  design: ['Arts & Design', 'Art & Design'], undecided: [],
 };
 
 export function mapUniversityToStudyPlanCard(university: University, program: Program): StudyPlanUniversity {
@@ -20,7 +20,7 @@ export function mapUniversityToStudyPlanCard(university: University, program: Pr
     intake: { date: program.intake || undefined, timingStatus: 'needs-verification' },
     englishRequirement: undefined, location: university.location,
     reasonMatched: ['يقدم مجالًا قريبًا من اختيارك', 'لديه برنامج ومسار دراسي مرتبط باختيارك'],
-    source: { sourceName: 'قاعدة بيانات NajmUni', sourceUrl: university.website, verificationStatus: 'needs-verification' },
+    source: { sourceName: program.source_name || 'قاعدة بيانات NajmUni', sourceUrl: program.source_url || university.website, verificationStatus: 'needs-verification' },
   };
 }
 
@@ -40,15 +40,15 @@ export async function getStudyPlanResult(profile: StudyPlanProfile): Promise<Stu
   const tuitionMin = tuitionValues.length ? Math.min(...tuitionValues) : 18000;
   const tuitionMax = tuitionValues.length ? Math.max(...tuitionValues) : 35000;
   const intakeByPreference: Record<string, { title: string; date: string }> = {
-    nearest: { title: 'أقرب بداية مناسبة', date: '1 فبراير 2027' },
-    'late-2026': { title: 'بداية نهاية 2026', date: '1 أكتوبر 2026' },
-    'early-2027': { title: 'بداية 2027', date: '1 فبراير 2027' },
-    flexible: { title: 'موعد مرن مقترح', date: '1 سبتمبر 2027' },
+    nearest: { title: 'أقرب بداية مناسبة', date: 'تحتاج تأكيدًا من الجامعة' },
+    'late-2026': { title: 'بداية نهاية 2026', date: 'تحتاج تأكيدًا من الجامعة' },
+    'early-2027': { title: 'بداية 2027', date: 'تحتاج تأكيدًا من الجامعة' },
+    flexible: { title: 'موعد مرن مقترح', date: 'تحتاج تأكيدًا من الجامعة' },
   };
   const intake = intakeByPreference[profile.preferredStart] ?? intakeByPreference.nearest;
   const englishReady = profile.english.type === 'english-medium' || (profile.english.type === 'ielts' && (profile.english.score ?? 0) >= 6);
-  const academicValue = profile.grade === null ? 'المعدل غير مكتمل' : profile.grade >= 80 ? 'جيد جدًا للبدء' : profile.grade >= 65 ? 'مناسب مبدئيًا' : 'قد يحتاج مسارًا تأسيسيًا';
-  const englishValue = englishReady ? 'جاهز مبدئيًا' : profile.english.type === 'ielts' ? 'قد يحتاج رفع الدرجة' : 'يحتاج تجهيز اللغة';
+  const academicValue = 'تحتاج متطلبات البرنامج مراجعة المستشار';
+  const englishValue = 'تحتاج متطلبات اللغة تأكيدًا للبرنامج';
   const yearlyMin = tuitionMin + 9600 + 12000 + 3000;
   const yearlyMax = tuitionMax + 18000 + 18000 + 5000;
   const budgetLimits: Record<string, number | undefined> = { 'under-25': 25000, '25-35': 35000, '35-45': 45000, '45-60': 60000, 'over-60': 75000, unsure: undefined };
@@ -60,7 +60,7 @@ export async function getStudyPlanResult(profile: StudyPlanProfile): Promise<Stu
     ...demoFlowResult,
     readiness: {
       status: 'review-required',
-      title: readinessPoints >= 3 ? 'جاهز للانتقال إلى مراجعة الخيارات' : readinessPoints >= 2 ? 'جاهز مبدئيًا مع نقاط تحتاج تجهيز' : 'تحتاج تجهيز بعض المتطلبات أولًا',
+      title: 'خيارات للمناقشة مع المستشار، وليست قرار أهلية',
       note: `بناءً على معدلك (${profile.grade ?? 'غير محدد'}%)، وضع اللغة، ميزانيتك وموعد البداية اخترنا لك أقرب صورة عملية.`,
       breakdown: [
         { label: 'الوضع الأكاديمي', value: academicValue, tone: profile.grade !== null && profile.grade >= 65 ? 'positive' : 'attention', icon: 'graduation' },

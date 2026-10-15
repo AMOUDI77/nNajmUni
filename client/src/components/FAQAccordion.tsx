@@ -2,67 +2,51 @@ import { useState } from 'react';
 import { C } from '../styles/theme';
 import { usePreferences, type Language } from '../i18n';
 
-const faqs: Record<Language, { q: string; a: string }[]> = {
-  en: [
+const faqs = {
+  "ar": [
     {
-      q: 'How much does it cost to study in Malaysia?',
-      a: 'Tuition fees range from RM 8,000-55,000/year depending on the university type and programme. Living costs average RM 1,200-2,500/month.',
+      "q": "هل معدلي يسمح لي بالدراسة؟",
+      "a": "لا يمكن تحديد أهليتك من المعدل وحده. اختر برنامجًا وراجع المؤهل والمواد المطلوبة مع المستشار؛ شروطه تحتاج تأكيدًا من الجامعة."
     },
     {
-      q: 'What are the academic requirements for international students?',
-      a: 'Most bachelor programmes require completion of secondary school or an equivalent qualification. English requirements vary by institution and programme.',
+      "q": "كم تكلفة الدراسة والمعيشة؟",
+      "a": "اعرض الرسوم المسجلة في صفحة التخصص واستخدم حاسبة الميزانية لتقدير المعيشة والسكن. الأرقام تحتاج تأكيدًا، وقد توجد رسوم إضافية."
     },
     {
-      q: 'How long does the application process take?',
-      a: 'From consultation to offer letter usually takes 2-6 weeks. The student visa can take another 4-8 weeks after documents are submitted.',
+      "q": "متى أقدر أبدأ الدراسة؟",
+      "a": "راجع الفترات المسجلة في صفحة التخصص، ثم أكد الدفعة المتاحة والمهلة اللازمة للإجراءات مع المستشار."
     },
     {
-      q: 'Can international students work while studying in Malaysia?',
-      a: 'Yes. International students on a valid Student Pass can work part-time under Malaysian immigration rules and approved conditions.',
+      "q": "هل أحتاج آيلتس؟",
+      "a": "متطلب اللغة لهذا البرنامج يحتاج تأكيدًا من الجامعة. اطلب توضيح الاختبارات المقبولة وأي بدائل قبل التقديم."
     },
     {
-      q: 'Is English used as the medium of instruction?',
-      a: 'Yes. Most private universities and many public university programmes are taught in English, but the language should be confirmed for each programme.',
-    },
-    {
-      q: 'Are Malaysian degrees recognised internationally?',
-      a: 'Many MQA-accredited Malaysian degrees are recognised across Asia, the Middle East, and beyond. Foreign branch campuses award degrees linked to their home university.',
-    },
-    {
-      q: 'How long does it take to get a student visa?',
-      a: 'The Malaysian Student Pass is processed through the university and immigration authorities. It typically takes 4-8 weeks.',
-    },
+      "q": "كيف أبدأ طلب القبول؟",
+      "a": "اختر «يلا ابدأ قبولك» وأرسل اسمك ورقم تواصلك. هذه خطوة لطلب المساعدة؛ التقديم الرسمي وتجهيز المستندات يأتيان بعد مراجعة التفاصيل معك."
+    }
   ],
-  ar: [
+  "en": [
     {
-      q: 'كم تكلفة الدراسة في ماليزيا؟',
-      a: 'تتراوح الرسوم غالبًا بين 8,000 و55,000 رنجت ماليزي سنويًا حسب نوع الجامعة والبرنامج. وتكون تكاليف المعيشة عادة بين 1,200 و2,500 رنجت شهريًا.',
+      "q": "Does my grade meet the requirements?",
+      "a": "A grade alone cannot establish eligibility. Confirm the qualification and subject requirements for your program with an advisor."
     },
     {
-      q: 'ما شروط القبول للطلاب الدوليين؟',
-      a: 'تحتاج أغلب برامج البكالوريوس إلى إتمام المرحلة الثانوية أو ما يعادلها. متطلبات اللغة الإنجليزية تختلف حسب الجامعة والبرنامج.',
+      "q": "What will study and living cost?",
+      "a": "Check the recorded tuition on the program page and use the budget calculator for planning. Confirm fees and additional costs before applying."
     },
     {
-      q: 'كم يستغرق التقديم؟',
-      a: 'عادة يستغرق الحصول على خطاب القبول من أسبوعين إلى ستة أسابيع، ثم قد تستغرق الفيزا من أربعة إلى ثمانية أسابيع بعد تقديم المستندات.',
+      "q": "When can I start?",
+      "a": "Check the listed intake periods and confirm the next available intake and processing timeline with an advisor."
     },
     {
-      q: 'هل يستطيع الطالب الدولي العمل أثناء الدراسة؟',
-      a: 'نعم، يمكن للطلاب الدوليين العمل بدوام جزئي ضمن شروط فيزا الطالب والقطاعات المسموحة في ماليزيا.',
+      "q": "Do I need IELTS?",
+      "a": "Confirm your program?s language requirements and accepted tests or alternatives with the university through your advisor."
     },
     {
-      q: 'هل الدراسة باللغة الإنجليزية؟',
-      a: 'نعم، أغلب الجامعات الخاصة وكثير من البرامج في الجامعات الحكومية تُدرس باللغة الإنجليزية، لكن يجب التأكد من لغة كل برنامج قبل التقديم.',
-    },
-    {
-      q: 'هل الشهادات الماليزية معترف بها دوليًا؟',
-      a: 'نعم، كثير من الشهادات الماليزية المعتمدة من MQA معترف بها في آسيا والشرق الأوسط ودول أخرى، كما أن فروع الجامعات الأجنبية تمنح شهادة مرتبطة بالجامعة الأم.',
-    },
-    {
-      q: 'كم تستغرق فيزا الطالب؟',
-      a: 'تُعالج فيزا الطالب عبر الجامعة والجهات المختصة في ماليزيا، وغالبًا تستغرق من أربعة إلى ثمانية أسابيع.',
-    },
-  ],
+      "q": "How do I start?",
+      "a": "Request application assistance with your name and contact number. This is an inquiry, not an official university application."
+    }
+  ]
 };
 
 export default function FAQAccordion() {

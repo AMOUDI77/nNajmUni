@@ -1,3 +1,4 @@
+import { institutionLogos as OFFICIAL_LOGOS } from '../institutionLogos';
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { api } from '../api';
@@ -5,13 +6,16 @@ import { UNIVERSITIES } from '../data';
 import type { University, Program } from '../types';
 import { C, gradientMid, gradientHero } from '../styles/theme';
 import { usePreferences } from '../i18n';
+import { studyDuration, fieldLabels } from '../catalogPresentation';
+import { levels } from '../discovery';
+import { programSearchNames, searchScore } from '../catalogSearch';
 
 /* ─── helpers ──────────────────────────────────────────────────────────────── */
 
 const TYPE_LABELS: Record<string, string> = {
-  public: 'Public University',
-  private: 'Private University',
-  foreign_branch: 'Foreign Branch Campus',
+  public: 'جامعة حكومية',
+  private: 'جامعة خاصة',
+  foreign_branch: 'فرع جامعة دولية',
 };
 
 const TYPE_COLORS: Record<string, string> = {
@@ -20,19 +24,11 @@ const TYPE_COLORS: Record<string, string> = {
   foreign_branch: '#7B1FA2',
 };
 
-const OFFICIAL_LOGOS: Record<string, string> = {
-  USM: '/official-logos/usm.jpg',
-  HWU: '/official-logos/heriot-watt.png',
-  LINCOLN: '/official-logos/lincoln.png',
-  SUNWAY: '/official-logos/sunway.avif',
-  "TAYLOR'S": '/official-logos/taylors.jpg',
-  UNICAM: '/official-logos/unicam.png',
-  CYBERJAYA: '/official-logos/cyberjaya.jpg',
-};
+
 
 const LEVEL_ORDER = ['foundation','diploma','bachelor','master','phd'];
 
-function fmt(n: number) { return 'RM ' + n.toLocaleString(); }
+function fmt(n: number | null) { return n ? 'RM ' + n.toLocaleString() : 'تحتاج تأكيدًا'; }
 
 type IconName = 'award' | 'graduation' | 'building' | 'calendar' | 'users' | 'wallet' | 'chart' | 'location' | 'home' | 'scale';
 
@@ -118,19 +114,19 @@ function ProgramRow({ prog, color }: { prog: Program; color: string }) {
   return (
     <div className="program-row" style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 18px', background: C.bg, borderRadius: 14, border:`1px solid ${C.border}` }}>
       <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 3 }}>{prog.name}</div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 3 }}><Link to={`/programs/${prog.id}`}>{prog.name}</Link></div>
         <div style={{ display:'flex', gap: 8, flexWrap:'wrap', alignItems:'center' }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: lc, background: `${lc}15`, borderRadius: 20, padding:'2px 10px', textTransform:'capitalize' }}>{prog.level}</span>
-          <span style={{ fontSize: 11, color: C.textMuted }}>{prog.duration_years} yrs</span>
+          <span style={{ fontSize: 11, fontWeight: 600, color: lc, background: `${lc}15`, borderRadius: 20, padding:'2px 10px', textTransform:'capitalize' }}>{levels[prog.level]}</span>
+          <span style={{ fontSize: 11, color: C.textMuted }}>{studyDuration(prog.duration_years)}</span>
           <span style={{ fontSize: 11, color: C.textMuted }}>·</span>
-          <span style={{ fontSize: 11, color: C.textMuted }}>{prog.field}</span>
+          <span style={{ fontSize: 11, color: C.textMuted }}>{fieldLabels[prog.field] || prog.field}</span>
           <span style={{ fontSize: 11, color: C.textMuted }}>·</span>
-          <span style={{ fontSize: 11, color: C.textMuted }}>Intake: {prog.intake}</span>
+          <span style={{ fontSize: 11, color: C.textMuted }}>{prog.intake ? `البداية: ${prog.intake}` : 'موعد البداية يحتاج تأكيدًا'}</span>
         </div>
       </div>
       <div style={{ textAlign:'right', paddingLeft: 16, flexShrink: 0 }}>
         <div style={{ fontSize: 14, fontWeight: 800, color }}>{fmt(prog.tuition_per_year)}</div>
-        <div style={{ fontSize: 11, color: C.textMuted }}>{t('detail.perYear')}</div>
+        <div style={{ fontSize: 11, color: C.textMuted }}>{t('detail.perYear')} — تحتاج تأكيدًا</div>
       </div>
     </div>
   );
@@ -271,8 +267,11 @@ export default function UniversityDetail() {
   const [uni, setUni] = useState<University | null>(null);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [loading, setLoading] = useState(true);
+  const [programQuery, setProgramQuery] = useState('');
+  const [programLimit, setProgramLimit] = useState(12);
   const [activeTab, setActiveTab] = useState<'all' | string>('all');
   const [scrolled, setScrolled] = useState(false);
+  useEffect(() => { setProgramLimit(12); }, [programQuery, activeTab, id]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -306,28 +305,23 @@ export default function UniversityDetail() {
   if (!uni) return null;
 
   const typeColor = TYPE_COLORS[uni.type] ?? C.purpleMid;
+  const universityTypeLabel = uni.abbr === 'UTMSPACE' ? 'مسار برامج تابع لـ UTM' : TYPE_LABELS[uni.type];
   const fields = ['all', ...new Set(programs.map(p => p.field))];
-  const visibleProgs = activeTab === 'all' ? programs : programs.filter(p => p.field === activeTab);
+  const visibleProgs = (activeTab === 'all' ? programs : programs.filter(p => p.field === activeTab)).filter(p => searchScore(programQuery, programSearchNames(p.name, p.field)) > 0);
   const sortedProgs = [...visibleProgs].sort((a, b) => LEVEL_ORDER.indexOf(a.level) - LEVEL_ORDER.indexOf(b.level));
-  const goToApplication = () => navigate('/#booking-section');
+  const goToApplication = () => navigate('/apply?' + new URLSearchParams({ university: uni.name }));
 
   /* ── Highlight card data ── */
   const highlights = [
     {
       icon: 'award' as IconName,
-      title: 'Rankings & Accreditation',
+      title: 'معلومات الجامعة',
       color: '#F59E0B',
-      items: [
-        uni.qs_ranking ? `QS World Ranking: #${uni.qs_ranking}` : 'Nationally Accredited',
-        'MQA (Malaysian Qualifications Agency) Certified',
-        TYPE_LABELS[uni.type],
-        `Established ${uni.established}`,
-        uni.students_count >= 10000 ? `${(uni.students_count/1000).toFixed(0)}k+ Students Enrolled` : `${uni.students_count.toLocaleString()}+ Students`,
-      ],
+      items: [universityTypeLabel, uni.location, 'اعتماد البرنامج وشروط القبول: تُراجع لكل تخصص'],
     },
     {
       icon: 'graduation' as IconName,
-      title: 'Top Programmes',
+      title: 'من البرامج المدرجة',
       color: C.purpleMid,
       items: programs.length > 0
         ? programs.slice(0, 5).map(p => `${p.name.replace('Bachelor of ','').replace('Master of ','')} (${p.level})`)
@@ -335,15 +329,9 @@ export default function UniversityDetail() {
     },
     {
       icon: 'building' as IconName,
-      title: 'Campus & Facilities',
+      title: 'قبل اختيارك',
       color: '#10B981',
-      items: [
-        'Modern lecture theatres & labs',
-        'High-speed Wi-Fi campus-wide',
-        'Student lounge & recreation areas',
-        'Library with 24/7 digital access',
-        uni.type === 'private' ? 'On-campus student accommodation' : 'Sports complex & health centre',
-      ],
+      items: ['حدد البرنامج والحرم المناسبين قبل التقديم', 'اسألنا عن السكن المتاح وتكلفته', 'نؤكد طريقة الدراسة ومواعيد البداية مع الجامعة'],
     },
   ];
 
@@ -372,7 +360,7 @@ export default function UniversityDetail() {
           <div style={{ flex:1, minWidth:260 }}>
             <div style={{ display:'flex', gap:10, marginBottom:16, flexWrap:'wrap', alignItems:'center' }}>
               <span style={{ fontSize:12, fontWeight:700, color:'#fff', background: typeColor, borderRadius:20, padding:'5px 14px', letterSpacing:'0.3px' }}>
-                {TYPE_LABELS[uni.type]}
+                {universityTypeLabel}
               </span>
               {uni.qs_ranking && (
                 <span style={{ fontSize:12, fontWeight:700, color:C.purpleDeep, background:'#fff', borderRadius:20, padding:'5px 14px' }}>
@@ -400,9 +388,9 @@ export default function UniversityDetail() {
           {/* quick stats column */}
           <div className="detail-quick-stats" style={{ display:'flex', flexDirection:'column', gap:12, minWidth:180 }}>
             {[
-              { icon:'calendar' as IconName, label:'Est.', value: String(uni.established) },
-              { icon:'users' as IconName, label:'Students', value: uni.students_count >= 1000 ? `${(uni.students_count/1000).toFixed(0)}k+` : `${uni.students_count}+` },
-              { icon:'wallet' as IconName, label:'Min Tuition/yr', value: `RM ${(uni.tuition_min/1000).toFixed(0)}k` },
+              { icon:'graduation' as IconName, label:'برامج مدرجة', value: String(programs.length) },
+              { icon:'building' as IconName, label:'مراحل دراسية', value: String(new Set(programs.map(p => p.level)).size) },
+              { icon:'wallet' as IconName, label:'أقل رسوم مرجعية / سنة', value: `RM ${(uni.tuition_min/1000).toFixed(0)}k` },
             ].map(s => (
               <div key={s.label} style={{ background:'rgba(255,255,255,0.1)', backdropFilter:'blur(8px)', border:'1px solid rgba(255,255,255,0.15)', borderRadius:16, padding:'14px 18px', display:'flex', alignItems:'center', gap:10 }}>
                 <ThemedIcon name={s.icon} color="#fff" size={20} />
@@ -430,6 +418,34 @@ export default function UniversityDetail() {
       {/* ── BODY ──────────────────────────────────────────────────────────────── */}
       <div className="detail-body" style={{ maxWidth:1200, margin:'0 auto', padding:'56px 40px' }}>
 
+        {/* Programmes */}
+        <div className="student-actions" style={{marginBottom:24}}><Link className="student-button secondary" to={`/explore?university=${uni.id}`}>ابحث في تخصصات الجامعة</Link><Link to="/compare">مقارنة الجامعات</Link></div>
+        <label>ابحث عن تخصص<input value={programQuery} onChange={e => setProgramQuery(e.target.value)} style={{display:'block',padding:12,border:'1px solid #ddd',borderRadius:12,width:'100%',marginBottom:20}} /></label>
+        {programs.length > 0 && (
+          <div style={{ marginBottom:56 }}>
+            <div style={{ fontSize:11, fontWeight:700, letterSpacing:3, color:C.textMuted, textTransform:'uppercase', marginBottom:8 }}>{t('detail.academic')}</div>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:24, flexWrap:'wrap', gap:16 }}>
+              <h2 style={{ fontSize:28, fontWeight:900, color:C.text, letterSpacing:'-1px' }}>{t('detail.available')}</h2>
+              <div className="detail-program-tabs" style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                {fields.map(f => (
+                  <button key={f} onClick={() => setActiveTab(f)} style={{
+                    padding:'8px 16px', borderRadius:50, border:`1px solid ${activeTab===f ? uni.color : C.border}`,
+                    background: activeTab===f ? `${uni.color}15` : '#fff',
+                    color: activeTab===f ? uni.color : C.textMuted,
+                    fontSize:12, fontWeight:600, cursor:'pointer', transition:'all 0.2s', textTransform:'capitalize',
+                  }}>{f === 'all' ? `${t('detail.all')} (${programs.length})` : fieldLabels[f] || f}</button>
+                ))}
+              </div>
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+              <p dir="rtl">{sortedProgs.length} برنامج في الدليل · الرسوم والتوفر يحتاجان تأكيدًا قبل التقديم.</p>
+              {sortedProgs.slice(0, programLimit).map(p => <ProgramRow key={p.id} prog={p} color={uni.color} />)}
+              {sortedProgs.length === 0 && <p dir="rtl">لم نجد برنامجًا مطابقًا. جرّب كلمة أخرى أو غيّر المجال.</p>}
+              {sortedProgs.length > programLimit && <button className="student-button secondary" onClick={() => setProgramLimit(n => n + 12)}>عرض المزيد ({sortedProgs.length - programLimit})</button>}
+            </div>
+          </div>
+        )}
+
         {/* Highlights grid */}
         <div style={{ marginBottom: 16 }}>
           <div style={{ fontSize:11, fontWeight:700, letterSpacing:3, color:C.textMuted, textTransform:'uppercase', marginBottom:8 }}>{t('detail.why')}</div>
@@ -445,12 +461,12 @@ export default function UniversityDetail() {
           <h3 style={{ fontSize:18, fontWeight:800, color:C.text, letterSpacing:'-0.5px', marginBottom:24 }}>{t('detail.quickFacts')}</h3>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))', gap:20 }}>
             {[
-              { label:'Minimum Tuition', value: fmt(uni.tuition_min) + '/yr', icon:'wallet' as IconName },
-              { label:'Maximum Tuition', value: fmt(uni.tuition_max) + '/yr', icon:'chart' as IconName },
-              { label:'University Type', value: TYPE_LABELS[uni.type], icon:'building' as IconName },
+              { label:'أقل رسوم مرجعية / سنة', value: fmt(uni.tuition_min) + '/yr', icon:'wallet' as IconName },
+              { label:'أعلى رسوم مرجعية / سنة', value: fmt(uni.tuition_max) + '/yr', icon:'chart' as IconName },
+              { label:'University Type', value: universityTypeLabel, icon:'building' as IconName },
               { label:'Location', value: uni.location, icon:'location' as IconName },
-              { label:'Year Founded', value: String(uni.established), icon:'calendar' as IconName },
-              { label:'Student Body', value: uni.students_count.toLocaleString() + '+', icon:'users' as IconName },
+              { label:'برامج مدرجة', value: String(programs.length), icon:'graduation' as IconName },
+              { label:'المراحل المتاحة في الدليل', value: [...new Set(programs.map(p => levels[p.level]))].join(' · '), icon:'calendar' as IconName },
             ].map(f => (
               <div key={f.label} style={{ display:'flex', alignItems:'center', gap:14 }}>
                 <IconBox icon={f.icon} color={C.purpleMid} size={42} />
@@ -463,28 +479,6 @@ export default function UniversityDetail() {
           </div>
         </div>
 
-        {/* Programmes */}
-        {programs.length > 0 && (
-          <div style={{ marginBottom:56 }}>
-            <div style={{ fontSize:11, fontWeight:700, letterSpacing:3, color:C.textMuted, textTransform:'uppercase', marginBottom:8 }}>{t('detail.academic')}</div>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:24, flexWrap:'wrap', gap:16 }}>
-              <h2 style={{ fontSize:28, fontWeight:900, color:C.text, letterSpacing:'-1px' }}>{t('detail.available')}</h2>
-              <div className="detail-program-tabs" style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-                {fields.map(f => (
-                  <button key={f} onClick={() => setActiveTab(f)} style={{
-                    padding:'8px 16px', borderRadius:50, border:`1px solid ${activeTab===f ? uni.color : C.border}`,
-                    background: activeTab===f ? `${uni.color}15` : '#fff',
-                    color: activeTab===f ? uni.color : C.textMuted,
-                    fontSize:12, fontWeight:600, cursor:'pointer', transition:'all 0.2s', textTransform:'capitalize',
-                  }}>{f === 'all' ? `${t('detail.all')} (${programs.length})` : f}</button>
-                ))}
-              </div>
-            </div>
-            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-              {sortedProgs.map(p => <ProgramRow key={p.id} prog={p} color={uni.color} />)}
-            </div>
-          </div>
-        )}
 
         {/* Private-university extra sections */}
         {uni.type !== 'public' && (
@@ -496,27 +490,15 @@ export default function UniversityDetail() {
                 icon="graduation"
                 title="Scholarships for International Students"
                 color="#F59E0B"
-                desc="Merit-based and need-based scholarships available for outstanding international applicants. Najmuni students receive priority consideration."
-                points={[
-                  'Up to 50% tuition waiver for top scorers',
-                  'Government-linked education financing (PTPTN)',
-                  'University Excellence Awards for GPA ≥ 3.5',
-                  'Need-based financial assistance packages',
-                  'NajmUni partner scholarship for applicants via our platform',
-                ]}
+                desc="تختلف المنح حسب الجامعة والبرنامج والدفعة. نراجع أهليتك والشروط الحالية قبل تأكيد أي خصم."
+                points={['المنح والخصومات تحتاج تأكيدًا رسميًا', 'لا يُخصم أي مبلغ من الرسوم قبل الحصول على عرض مكتوب']}
               />
               <InfoSection
                 icon="home"
                 title="Modern Student Accommodation"
                 color="#10B981"
-                desc="Purpose-built student housing within or adjacent to campus, designed for comfort, safety, and community living."
-                points={[
-                  'Fully furnished single and twin rooms',
-                  '24/7 security with CCTV surveillance',
-                  'High-speed internet in all residential blocks',
-                  'Common areas: study lounges, pantry, laundry',
-                  'Shuttle bus to campus & nearby transit hubs',
-                ]}
+                desc="نساعدك في معرفة خيارات السكن حسب الحرم الجامعي وتاريخ وصولك."
+                points={['توفر الغرف والخدمات والأسعار يحتاج تأكيدًا', 'حدد ميزانيتك ونوع الغرفة عند الاستفسار']}
               />
             </div>
           </div>
