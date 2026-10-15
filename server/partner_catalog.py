@@ -2,6 +2,7 @@
 import argparse
 import json
 from pathlib import Path
+from catalog_public import public_catalog_record
 
 CATALOG = json.loads(Path(__file__).with_name('partner_catalog.json').read_text(encoding='utf-8'))
 UNIVERSITIES = CATALOG['universities']
@@ -15,9 +16,9 @@ def public_university(row):
 def enrich_program(row):
     source = PROGRAM_BY_ID.get(row['id'])
     if source and all(source[k] == row[k] for k in ('name', 'tuition_per_year', 'duration_years')):
-        for key in ('source_url', 'source_name', 'source_checked_at', 'verification_status'):
+        for key in ('verification_status',):
             row[key] = source[key]
-    return row
+    return public_catalog_record(row)
 
 def import_catalog(db):
     """Insert missing references, preserve counselor-edited records, retain nonpartners.

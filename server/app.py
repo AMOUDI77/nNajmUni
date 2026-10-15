@@ -211,6 +211,7 @@ def public_program_rows(db, records):
 
 @app.get('/api/universities')
 def list_universities():
+    from catalog_public import public_catalog_record
     from partner_catalog import public_university
     db   = get_db()
     q    = request.args.get('q', '')
@@ -220,18 +221,19 @@ def list_universities():
     if kind: sql += ' AND type=?';                                              params.append(kind)
     if q:    sql += ' AND (name LIKE ? OR abbr LIKE ? OR description LIKE ?)'; params += [f'%{q}%']*3
     sql += ' ORDER BY COALESCE(qs_ranking,9999), name'
-    data  = [u for u in rows(db.execute(sql, params)) if public_university(u)]
+    data  = [public_catalog_record(u) for u in rows(db.execute(sql, params)) if public_university(u)]
     total = len(data)
     return jsonify(data=data, total=total)
 
 @app.get('/api/universities/<int:uid>')
 def get_university(uid):
+    from catalog_public import public_catalog_record
     from partner_catalog import public_university, enrich_program
     db = get_db()
     data = rows(db.execute('SELECT * FROM universities WHERE id=?', [uid]))
     if not data or not public_university(data[0]): return jsonify(error='Not found'), 404
     progs = rows(db.execute('SELECT * FROM programs WHERE university_id=? ORDER BY level,name', [uid]))
-    return jsonify(**data[0], programs=public_program_rows(db, progs))
+    return jsonify(**public_catalog_record(data[0]), programs=public_program_rows(db, progs))
 
 
 @app.get('/api/institutes')

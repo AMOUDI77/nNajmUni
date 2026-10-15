@@ -67,8 +67,7 @@ export default function ProgramDetail() {
       <section className="student-card">
         <h2>عن التخصص</h2>
         <p dir="auto">{program.description || fieldLabels[program.field] || program.field}</p>
-        {program.source_url && <p className="catalog-source">اسم البرنامج والرسوم من <a href={program.source_url} target="_blank" rel="noreferrer">{program.source_name}</a> · تاريخ الاطلاع: <bdi>{program.source_checked_at}</bdi>. نؤكد التوفر والحرم ونمط الدراسة مع الجامعة قبل تقديم طلبك.</p>}
-        {university && <a href={university.website} target="_blank" rel="noreferrer">موقع الجامعة الرسمي ↗</a>}
+        <p>نؤكد لك التوفر والحرم ونمط الدراسة مع فريق NajmUni قبل تقديم طلبك.</p>
       </section>
       <section className="student-card">
         <h2>الرسوم والتكاليف</h2>

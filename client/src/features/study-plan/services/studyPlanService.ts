@@ -20,7 +20,7 @@ export function mapUniversityToStudyPlanCard(university: University, program: Pr
     intake: { date: program.intake || undefined, timingStatus: 'needs-verification' },
     englishRequirement: undefined, location: university.location,
     reasonMatched: ['يقدم مجالًا قريبًا من اختيارك', 'لديه برنامج ومسار دراسي مرتبط باختيارك'],
-    source: { sourceName: program.source_name || 'قاعدة بيانات NajmUni', sourceUrl: program.source_url || university.website, verificationStatus: 'needs-verification' },
+    source: { verificationStatus: 'needs-verification' },
   };
 }
 

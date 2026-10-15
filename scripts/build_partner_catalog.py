@@ -6,9 +6,12 @@ import ast
 import hashlib
 import json
 import re
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / 'server'))
+from catalog_public import public_catalog_record
 tree = ast.parse((ROOT / 'server/app.py').read_text(encoding='utf-8'))
 old = next(ast.literal_eval(n.value) for n in tree.body if isinstance(n, ast.Assign)
            and any(isinstance(t, ast.Name) and t.id == 'UNIVERSITIES' for t in n.targets))
@@ -78,7 +81,11 @@ assert len(universities) == 22
 assert len({p['id'] for p in programs}) == len(programs), 'ID collision'
 catalog = dict(version='2026-10-15', universities=universities, programs=programs)
 encoded = json.dumps(catalog, ensure_ascii=False, indent=2) + '\n'
-for target in ('server/partner_catalog.json', 'client/src/partner_catalog.json'):
-    (ROOT / target).write_text(encoded, encoding='utf-8')
+(ROOT / 'server/partner_catalog.json').write_text(encoded, encoding='utf-8')
+public_catalog = dict(version=catalog['version'],
+    universities=[public_catalog_record(u) for u in universities],
+    programs=[public_catalog_record(p) for p in programs])
+(ROOT / 'client/src/partner_catalog.json').write_text(
+    json.dumps(public_catalog, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
 print(f'Generated {len(universities)} partner institutions and {len(programs)} reference programs')
 print('Unclassified levels:', [p['name'] for p in programs if p['level'] == 'other'])

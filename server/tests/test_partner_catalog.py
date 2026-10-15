@@ -4,6 +4,7 @@ from sqlalchemy import create_engine
 from db.engine import DatabaseConnection
 from db.schema import metadata
 from partner_catalog import CATALOG, import_catalog
+from catalog_public import public_catalog_record
 
 def test_snapshot_scope_integrity_and_frontend_parity():
     expected = {'APU','CITY','CYBERJAYA','INTI','KLUST','LINCOLN','MAHSA','MSU','MMU','NILAI','SEGI','SUNWAY',"TAYLOR'S",'UCSI','UNIKL','UNITEN','GEOMATIKA','UTEM','UTMSPACE','UTM','UTP','XIAMEN'}
@@ -16,7 +17,11 @@ def test_snapshot_scope_integrity_and_frontend_parity():
         assert p['verification_status'] == 'reference_only'
         assert p['tuition_per_year'] is None or p['tuition_per_year'] > 0
     client = Path(__file__).resolve().parents[2] / 'client/src/partner_catalog.json'
-    assert json.loads(client.read_text(encoding='utf-8')) == CATALOG
+    public = json.loads(client.read_text(encoding='utf-8'))
+    assert public['universities'] == [public_catalog_record(u) for u in CATALOG['universities']]
+    assert public['programs'] == [public_catalog_record(p) for p in CATALOG['programs']]
+    encoded = json.dumps(public).lower()
+    assert 'your-uni' not in encoded and 'youruni' not in encoded and 'neogoals' not in encoded
 
 def test_import_preserves_edits_and_nonpartners(tmp_path):
     engine=create_engine('sqlite:///' + str(tmp_path/'catalog.db').replace('\\','/'))

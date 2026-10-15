@@ -1,110 +1,74 @@
 [
   {
     "abbr": "MMU",
-    "path": "/partner-logos/mmu.png",
-    "source": "https://www.mmu.edu.my/wp-content/themes/mmu2018/assets/images/logo-mmu.png",
-    "kind": "logo"
+    "path": "/partner-logos/mmu.png"
   },
   {
     "abbr": "APU",
-    "path": "/partner-logos/apu.png",
-    "source": "https://www.apu.edu.my/themes/custom/apu/images/navbar/navbar-logo--dark.png",
-    "kind": "logo"
+    "path": "/partner-logos/apu.png"
   },
   {
     "abbr": "UNITEN",
-    "path": "/partner-logos/uniten.png",
-    "source": "https://www.uniten.edu.my/media/hj4iy4ln/universiti_tenaga_nasional_logo.png?format=webp",
-    "kind": "logo"
+    "path": "/partner-logos/uniten.png"
   },
   {
     "abbr": "UTP",
-    "path": "/partner-logos/utp.png",
-    "source": "https://utp.edu.my/SiteAssets/UTP-logo2.png",
-    "kind": "logo"
+    "path": "/partner-logos/utp.png"
   },
   {
     "abbr": "KLUST",
-    "path": "/partner-logos/klust.png",
-    "source": "https://klust.edu.my/wp-content/uploads/2026/03/logo-klust.png",
-    "kind": "logo"
+    "path": "/partner-logos/klust.png"
   },
   {
     "abbr": "UNIKL",
-    "path": "/partner-logos/unikl.png",
-    "source": "https://www.unikl.edu.my/wp-content/uploads/2023/06/Logo-creation-1.png",
-    "kind": "logo"
+    "path": "/partner-logos/unikl.png"
   },
   {
     "abbr": "UTM",
-    "path": "/partner-logos/utm.png",
-    "source": "https://www.utm.my/wp-content/uploads/2025/09/LOGO-UTM-MAIN-2025.png",
-    "kind": "logo"
+    "path": "/partner-logos/utm.png"
   },
   {
     "abbr": "UTMSPACE",
-    "path": "/partner-logos/utmspace.png",
-    "source": "https://space.utm.my/wp-content/uploads/2024/11/new_logo-space2024.png",
-    "kind": "logo"
+    "path": "/partner-logos/utmspace.png"
   },
   {
     "abbr": "XIAMEN",
-    "path": "/partner-logos/xiamen.png",
-    "source": "https://xmu.edu.my/sites/default/files/Logo-Xmum-White.png",
-    "kind": "logo"
+    "path": "/partner-logos/xiamen.png"
   },
   {
     "abbr": "UCSI",
-    "path": "/partner-logos/ucsi.png",
-    "source": "https://www.google.com/s2/favicons?domain=ucsiuniversity.edu.my&sz=128",
-    "kind": "favicon"
+    "path": "/partner-logos/ucsi.png"
   },
   {
     "abbr": "MSU",
-    "path": "/partner-logos/msu.png",
-    "source": "https://www.google.com/s2/favicons?domain=msu.edu.my&sz=128",
-    "kind": "favicon"
+    "path": "/partner-logos/msu.png"
   },
   {
     "abbr": "SEGI",
-    "path": "/partner-logos/segi.png",
-    "source": "https://www.google.com/s2/favicons?domain=segi.edu.my&sz=128",
-    "kind": "favicon"
+    "path": "/partner-logos/segi.png"
   },
   {
     "abbr": "GEOMATIKA",
-    "path": "/partner-logos/geomatika.png",
-    "source": "https://www.geomatika.edu.my/wp-content/uploads/2022/10/Logo-UGM-2022-TRANSPARENT-01.png",
-    "kind": "logo"
+    "path": "/partner-logos/geomatika.png"
   },
   {
     "abbr": "CITY",
-    "path": "/partner-logos/city.png",
-    "source": "https://www.google.com/s2/favicons?domain=city.edu.my&sz=128",
-    "kind": "favicon"
+    "path": "/partner-logos/city.png"
   },
   {
     "abbr": "MAHSA",
-    "path": "/partner-logos/mahsa.png",
-    "source": "https://www.google.com/s2/favicons?domain=mahsa.edu.my&sz=128",
-    "kind": "favicon"
+    "path": "/partner-logos/mahsa.png"
   },
   {
     "abbr": "INTI",
-    "path": "/partner-logos/inti.png",
-    "source": "https://www.google.com/s2/favicons?domain=newinti.edu.my&sz=128",
-    "kind": "favicon"
+    "path": "/partner-logos/inti.png"
   },
   {
     "abbr": "NILAI",
-    "path": "/partner-logos/nilai.png",
-    "source": "https://www.google.com/s2/favicons?domain=nilai.edu.my&sz=128",
-    "kind": "favicon"
+    "path": "/partner-logos/nilai.png"
   },
   {
     "abbr": "UTEM",
-    "path": "/partner-logos/utem.svg",
-    "source": "https://en.wikipedia.org/wiki/File:UTeM_Logo_(Light).svg",
-    "kind": "logo"
+    "path": "/partner-logos/utem.svg"
   }
 ]
