@@ -1,3 +1,4 @@
+import { useCopy } from '../copy';
 import { Link } from 'react-router-dom';
 import Logo from './Logo';
 import { UNIVERSITIES } from '../data';
@@ -11,6 +12,7 @@ const cols: Array<{ titleKey: TranslationKey; links: Array<[TranslationKey | str
 ];
 
 export default function Footer() {
+  const { tr, language: copyLanguage } = useCopy();
   const { t } = usePreferences();
   const label = (key: TranslationKey | string) => key.startsWith('footer.') ? t(key as TranslationKey) : key;
 
@@ -23,30 +25,30 @@ export default function Footer() {
               <Logo height={36} />
             </div>
             <p style={{ lineHeight: 1.7, maxWidth: 260, color: 'rgba(255,255,255,0.5)' }}>
-              {t('footer.copy')}
+              {tr(t('footer.copy'))}
             </p>
             <div style={{display:'flex',flexWrap:'wrap',gap:16,marginTop:18}}>
-              <Link to="/study-plan">خطتك الدراسية</Link>
-              <Link to="/costs">حاسبة الميزانية</Link>
-              <Link to="/compare">مقارنة الجامعات</Link>
+              <Link to="/study-plan">{tr("خطتك الدراسية")}</Link>
+              <Link to="/costs">{tr("حاسبة الميزانية")}</Link>
+              <Link to="/compare">{tr("مقارنة الجامعات")}</Link>
             </div>
           </div>
           {cols.map(col => (
             <div key={col.titleKey}>
-              <div style={{ fontWeight: 700, color: '#fff', marginBottom: 16, fontSize: 13, letterSpacing: 1 }}>{t(col.titleKey)}</div>
+              <div style={{ fontWeight: 700, color: '#fff', marginBottom: 16, fontSize: 13, letterSpacing: 1 }}>{tr(t(col.titleKey))}</div>
               {col.links.map(([labelKey, to]) => (
                 <Link key={labelKey} to={to} style={{
                   display: 'block', color: 'rgba(255,255,255,0.5)', marginBottom: 10, fontSize: 13, transition: 'color 0.2s',
                 }}
                 onMouseEnter={e => (e.currentTarget.style.color = '#7B61FF')}
                 onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.5)')}
-                >{label(labelKey)}</Link>
+                >{tr(label(labelKey))}</Link>
               ))}
             </div>
           ))}
         </div>
         <div className="footer-bottom" style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-          <span style={{ fontSize: 13 }}>© 2026 {t('footer.rights')}</span>
+          <span style={{ fontSize: 13 }}>© 2026 {tr(t('footer.rights'))}</span>
           <div className="footer-social" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <a href="https://instagram.com/najm.uni" target="_blank" rel="noopener noreferrer"
               style={{ display: 'flex', alignItems: 'center', gap: 7, color: 'rgba(255,255,255,0.5)', fontSize: 13, textDecoration: 'none', transition: 'color 0.2s' }}

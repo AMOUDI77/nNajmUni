@@ -244,7 +244,7 @@ const en = {
   'footer.contact': 'Contact',
   'footer.privacy': 'Privacy Policy',
   'footer.terms': 'Terms',
-  'footer.rights': 'NajmUni Sdn Bhd. All rights reserved.',
+  'footer.rights': 'NajmUni. All rights reserved.',
 } as const;
 
 const ar: Record<keyof typeof en, string> = {
@@ -489,7 +489,7 @@ const ar: Record<keyof typeof en, string> = {
   'footer.contact': 'تواصل',
   'footer.privacy': 'سياسة الخصوصية',
   'footer.terms': 'الشروط',
-  'footer.rights': 'NajmUni Sdn Bhd. جميع الحقوق محفوظة.',
+  'footer.rights': 'نجم يوني. جميع الحقوق محفوظة.',
 };
 
 export type TranslationKey = keyof typeof en;

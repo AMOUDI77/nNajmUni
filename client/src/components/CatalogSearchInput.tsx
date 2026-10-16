@@ -1,3 +1,4 @@
+import { useCopy } from '../copy';
 import { useEffect, useId, useRef, useState } from "react";
 export interface SearchSuggestion {
   key: string;
@@ -18,6 +19,7 @@ export default function CatalogSearchInput({
   suggestions: SearchSuggestion[];
   onSelect: (suggestion: SearchSuggestion) => void;
 }) {
+  const { tr, language: copyLanguage } = useCopy();
   const listId = useId(),
     input = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false),
@@ -66,7 +68,7 @@ export default function CatalogSearchInput({
           autoComplete="off"
           spellCheck={false}
           value={value}
-          placeholder="مثلًا: هندسة البرمجيات، محاسبة، APU…"
+          placeholder={tr("مثلًا: هندسة البرمجيات، محاسبة، APU…")}
           onFocus={() => setOpen(true)}
           onChange={(e) => {
             onChange(e.target.value);
@@ -98,11 +100,11 @@ export default function CatalogSearchInput({
             }
           }}
         />
-        {value && (
+        {tr(value && (
           <button
             className="catalog-clear"
             type="button"
-            aria-label="مسح البحث"
+            aria-label={tr("مسح البحث")}
             onClick={() => {
               onChange("");
               setActive(-1);
@@ -111,12 +113,12 @@ export default function CatalogSearchInput({
           >
             ×
           </button>
-        )}
+        ))}
       </div>
       {expanded && (
         <div className="catalog-suggestions">
-          <div className="catalog-suggestions-label">أقرب الخيارات لبحثك</div>
-          <ul id={listId} role="listbox" aria-label="اقتراحات البحث">
+          <div className="catalog-suggestions-label">{tr("أقرب الخيارات لبحثك")}</div>
+          <ul id={listId} role="listbox" aria-label={tr("اقتراحات البحث")}>
             {suggestions.map((item, index) => (
               <li
                 key={item.key}
@@ -128,8 +130,8 @@ export default function CatalogSearchInput({
                 onMouseEnter={() => setActive(index)}
               >
                 <span>
-                  <strong dir="auto">{item.name}</strong>
-                  <small>{item.caption}</small>
+                  <strong dir="auto">{tr(item.name)}</strong>
+                  <small>{tr(item.caption)}</small>
                 </span>
                 <span aria-hidden="true">↖</span>
               </li>
@@ -137,12 +139,10 @@ export default function CatalogSearchInput({
           </ul>
           {!suggestions.length && (
             <p role="status">
-              ما لقينا اسمًا قريبًا. جرّب الاختصار أو حروفًا أقل.
-            </p>
+              {tr("ما لقينا اسمًا قريبًا. جرّب الاختصار أو حروفًا أقل.")}</p>
           )}
           <div className="catalog-suggestions-hint">
-            النتائج تتحدث أثناء الكتابة · ↑ ↓ للاختيار وEnter للتأكيد
-          </div>
+            {tr("النتائج تتحدث أثناء الكتابة · ↑ ↓ للاختيار وEnter للتأكيد")}</div>
         </div>
       )}
     </div>

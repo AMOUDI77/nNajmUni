@@ -1,3 +1,4 @@
+import { useCopy } from '../copy';
 import { useState } from 'react';
 import { C } from '../styles/theme';
 import { usePreferences } from '../i18n';
@@ -45,6 +46,7 @@ const testimonials = [
 ];
 
 export default function Testimonials() {
+  const { tr, language: copyLanguage } = useCopy();
   const { t } = usePreferences();
   const [active, setActive] = useState(0);
   const activeTestimonial = testimonials[active];
@@ -56,7 +58,7 @@ export default function Testimonials() {
       <div style={{ maxWidth: 1200, margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: 'clamp(32px,5vw,56px)' }}>
           <h2 style={{ fontSize: 'clamp(26px,4vw,42px)', fontWeight: 800, color: C.text, letterSpacing: '-1px', lineHeight: 1.15 }}>
-            {t('testimonials.titleA')} <span style={{ color: C.purpleMid }}>{t('testimonials.titleB')}</span>
+            {tr(t('testimonials.titleA'))} <span style={{ color: C.purpleMid }}>{tr(t('testimonials.titleB'))}</span>
           </h2>
         </div>
 
@@ -65,14 +67,14 @@ export default function Testimonials() {
           <div style={{ background: `linear-gradient(135deg, ${C.purpleDeep}, ${C.purpleMid})`, borderRadius: 'clamp(16px,3vw,28px)', padding: 'clamp(28px,4vw,48px)', position: 'relative', overflow: 'hidden' }}>
             <div style={{ position: 'absolute', top: -40, right: -40, width: 160, height: 160, borderRadius: '50%', background: 'rgba(255,255,255,0.05)' }} />
             <div style={{ fontSize: 'clamp(40px,6vw,64px)', color: 'rgba(255,255,255,0.2)', fontFamily: 'Georgia', lineHeight: 0.8, marginBottom: 16 }}>"</div>
-            <p style={{ fontSize: 'clamp(14px,1.8vw,17px)', color: 'rgba(255,255,255,0.9)', lineHeight: 1.8, marginBottom: 'clamp(20px,3vw,32px)', position: 'relative', zIndex: 1 }}>{activeTestimonial.text}</p>
+            <p style={{ fontSize: 'clamp(14px,1.8vw,17px)', color: 'rgba(255,255,255,0.9)', lineHeight: 1.8, marginBottom: 'clamp(20px,3vw,32px)', position: 'relative', zIndex: 1 }}>{tr(activeTestimonial.text)}</p>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
               <div style={{ width: 48, height: 48, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: 'rgba(255,255,255,0.15)' }}>
                 <img src={activeTestimonial.avatarSrc} alt={activeTestimonial.name} width={48} height={48} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: activeTestimonial.avatarFit }} />
               </div>
               <div>
-                <div style={{ fontWeight: 700, color: '#fff', fontSize: 15 }}>{activeTestimonial.name}</div>
-                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>{activeTestimonial.country} - {activeTestimonial.university} - {activeTestimonial.program}</div>
+                <div style={{ fontWeight: 700, color: '#fff', fontSize: 15 }}>{tr(activeTestimonial.name)}</div>
+                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>{tr(activeTestimonial.country)} - {tr(activeTestimonial.university)} - {tr(activeTestimonial.program)}</div>
               </div>
             </div>
           </div>
@@ -102,8 +104,8 @@ export default function Testimonials() {
                   <img src={item.avatarSrc} alt={item.name} width={40} height={40} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: item.avatarFit }} />
                 </div>
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{item.name}</div>
-                  <div style={{ fontSize: 12, color: C.textMuted }}>{item.country} · {item.university}</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{tr(item.name)}</div>
+                  <div style={{ fontSize: 12, color: C.textMuted }}>{tr(item.country)} · {tr(item.university)}</div>
                 </div>
                 {active === i && <span style={{ marginLeft: 'auto', color: C.purpleMid, fontSize: 18 }}>›</span>}
               </div>

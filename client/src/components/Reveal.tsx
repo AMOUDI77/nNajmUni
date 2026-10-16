@@ -1,3 +1,4 @@
+import { useCopy } from '../copy';
 import type { CSSProperties, ReactNode } from 'react';
 import { useScrollReveal } from '../hooks/useScrollReveal';
 
@@ -10,10 +11,11 @@ interface Props {
 }
 
 export default function Reveal({ children, delay, direction, style, className }: Props) {
+  const { tr, language: copyLanguage } = useCopy();
   const ref = useScrollReveal({ delay, direction });
   return (
     <div ref={ref} style={style} className={className}>
-      {children}
+      {tr(children)}
     </div>
   );
 }

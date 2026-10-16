@@ -1,3 +1,4 @@
+import { useCopy } from '../copy';
 import { useEffect } from 'react';
 
 interface BottomSheetProps {
@@ -8,6 +9,7 @@ interface BottomSheetProps {
 }
 
 export default function BottomSheet({ open, onClose, title, children }: BottomSheetProps) {
+  const { tr, language: copyLanguage } = useCopy();
   useEffect(() => {
     if (open) {
       document.body.style.overflow = 'hidden';
@@ -51,7 +53,7 @@ export default function BottomSheet({ open, onClose, title, children }: BottomSh
         </div>
         {/* title + close */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 20px 16px' }}>
-          <span style={{ fontSize: 16, fontWeight: 700, color: '#111827' }}>{title}</span>
+          <span style={{ fontSize: 16, fontWeight: 700, color: '#111827' }}>{tr(title)}</span>
           <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: '#F3F4F6', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="#6B7280" strokeWidth="2.2" strokeLinecap="round">
               <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
@@ -60,7 +62,7 @@ export default function BottomSheet({ open, onClose, title, children }: BottomSh
         </div>
         {/* options list */}
         <div style={{ overflowY: 'auto', padding: '0 12px 20px', flex: 1 }}>
-          {children}
+          {tr(children)}
         </div>
       </div>
     </>

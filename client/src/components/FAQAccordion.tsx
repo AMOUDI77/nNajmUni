@@ -1,3 +1,4 @@
+import { useCopy } from '../copy';
 import { useState } from 'react';
 import { C } from '../styles/theme';
 import { usePreferences, type Language } from '../i18n';
@@ -40,7 +41,7 @@ const faqs = {
     },
     {
       "q": "Do I need IELTS?",
-      "a": "Confirm your program?s language requirements and accepted tests or alternatives with the university through your advisor."
+      "a": "Confirm your programme's language requirements and accepted tests or alternatives with the university through your advisor."
     },
     {
       "q": "How do I start?",
@@ -50,6 +51,7 @@ const faqs = {
 };
 
 export default function FAQAccordion() {
+  const { tr, language: copyLanguage } = useCopy();
   const { t, language } = usePreferences();
   const [open, setOpen] = useState<number | null>(0);
   const list = faqs[language];
@@ -58,13 +60,13 @@ export default function FAQAccordion() {
     <section style={{ padding: 'clamp(52px,8vw,80px) clamp(20px,4vw,40px)', maxWidth: 900, margin: '0 auto' }} id="faq">
       <div style={{ textAlign: 'center', marginBottom: 56 }}>
         <div style={{ display: 'inline-flex', fontSize: 12, fontWeight: 600, color: C.purpleMid, letterSpacing: language === 'ar' ? 0 : 2, textTransform: language === 'ar' ? 'none' : 'uppercase', marginBottom: 16, background: C.purplePale, borderRadius: 20, padding: '6px 16px' }}>
-          {t('faq.badge')}
+          {tr(t('faq.badge'))}
         </div>
         <h2 style={{ fontSize: 'clamp(28px,4vw,42px)', fontWeight: 800, color: C.text, letterSpacing: '-1px', lineHeight: 1.15, marginBottom: 14 }}>
-          {t('faq.titleA')} <span style={{ color: C.purpleMid }}>{t('faq.titleB')}</span>
+          {tr(t('faq.titleA'))} <span style={{ color: C.purpleMid }}>{tr(t('faq.titleB'))}</span>
         </h2>
         <p style={{ fontSize: 16, color: C.textMuted, maxWidth: 500, margin: '0 auto', lineHeight: 1.7 }}>
-          {t('faq.copy')}
+          {tr(t('faq.copy'))}
         </p>
       </div>
 
@@ -91,7 +93,7 @@ export default function FAQAccordion() {
                 cursor: 'pointer',
                 textAlign: language === 'ar' ? 'right' : 'left',
               }}>
-                <span style={{ fontSize: 15, fontWeight: 600, color: C.text, lineHeight: 1.4, paddingInlineEnd: 16 }}>{item.q}</span>
+                <span style={{ fontSize: 15, fontWeight: 600, color: C.text, lineHeight: 1.4, paddingInlineEnd: 16 }}>{tr(item.q)}</span>
                 <div style={{
                   width: 28,
                   height: 28,
@@ -110,7 +112,7 @@ export default function FAQAccordion() {
               </button>
               {isOpen && (
                 <div style={{ padding: '0 24px 24px' }}>
-                  <p style={{ fontSize: 14, color: C.textMuted, lineHeight: 1.8, borderTop: `1px solid ${C.border}`, paddingTop: 16, margin: 0 }}>{item.a}</p>
+                  <p style={{ fontSize: 14, color: C.textMuted, lineHeight: 1.8, borderTop: `1px solid ${C.border}`, paddingTop: 16, margin: 0 }}>{tr(item.a)}</p>
                 </div>
               )}
             </div>

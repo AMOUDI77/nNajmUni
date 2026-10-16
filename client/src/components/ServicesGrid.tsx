@@ -1,3 +1,4 @@
+import { useCopy } from '../copy';
 import { useState } from 'react';
 import { C } from '../styles/theme';
 import { usePreferences, type TranslationKey } from '../i18n';
@@ -22,31 +23,33 @@ const SERVICES: Array<{ icon: React.ReactNode; titleKey: TranslationKey; descKey
 ];
 
 function ServiceCard({ icon, title, desc }: { icon: React.ReactNode; title: string; desc: string }) {
+  const { tr, language: copyLanguage } = useCopy();
   const [hov, setHov] = useState(false);
   return (
     <div className="service-card" onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
       style={{ background:'#fff', borderRadius:16, padding:'26px 24px', border:`1px solid ${hov ? '#D8DEFF' : '#f0f0f0'}`, boxShadow: hov ? '0 8px 24px rgba(79,107,255,0.06)' : '0 1px 8px rgba(15,23,42,0.04)', transition:'all 0.2s', cursor:'default' }}>
       <div style={{ width:40, height:40, borderRadius:10, display:'flex', alignItems:'center', justifyContent:'center', marginBottom:16 }}>
-        {icon}
+        {tr(icon)}
       </div>
-      <div style={{ fontSize:14, fontWeight:700, color:'#111827', marginBottom:7 }}>{title}</div>
-      <div style={{ fontSize:13, color: C.textMuted, lineHeight:1.65 }}>{desc}</div>
+      <div style={{ fontSize:14, fontWeight:700, color:'#111827', marginBottom:7 }}>{tr(title)}</div>
+      <div style={{ fontSize:13, color: C.textMuted, lineHeight:1.65 }}>{tr(desc)}</div>
     </div>
   );
 }
 
 export default function ServicesGrid() {
+  const { tr, language: copyLanguage } = useCopy();
   const { t } = usePreferences();
 
   return (
     <section className="section-pad" style={{ maxWidth:1200, margin:'0 auto' }} id="services">
       <div style={{ marginBottom:32 }}>
-        <span style={{ fontSize:10, fontWeight:700, color: C.purpleMid, letterSpacing:'3px', textTransform:'uppercase' }}>{t('services.badge')}</span>
+        <span style={{ fontSize:10, fontWeight:700, color: C.purpleMid, letterSpacing:'3px', textTransform:'uppercase' }}>{tr(t('services.badge'))}</span>
         <h2 style={{ fontSize:'clamp(22px,3.5vw,38px)', fontWeight:800, color:'#111827', letterSpacing:'-1px', lineHeight:1.2, marginTop:8 }}>
-          {t('services.title')}
+          {tr(t('services.title'))}
         </h2>
         <p style={{ fontSize:14, color: C.textMuted, maxWidth:480, lineHeight:1.7, marginTop:8 }}>
-          {t('services.copy')}
+          {tr(t('services.copy'))}
         </p>
       </div>
       <div className="services-grid" style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:16 }}>

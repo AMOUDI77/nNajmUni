@@ -1,3 +1,4 @@
+import { useCopy } from '../copy';
 import { useState, useRef, useEffect, useCallback } from 'react';
 
 export interface SelectOption {
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export default function Select({ options, value, onChange, placeholder = 'Select…', searchable = false, style }: Props) {
+  const { tr, language: copyLanguage } = useCopy();
   const [open, setOpen]     = useState(false);
   const [query, setQuery]   = useState('');
   const ref                 = useRef<HTMLDivElement>(null);
@@ -60,7 +62,7 @@ export default function Select({ options, value, onChange, placeholder = 'Select
           boxShadow: open ? '0 0 0 3px rgba(196,181,253,0.2)' : 'none',
         }}>
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {selected ? selected.label : placeholder}
+          {tr(selected ? selected.label : placeholder)}
         </span>
         <svg viewBox="0 0 24 24" width={14} height={14} fill="none" stroke="#9CA3AF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
           style={{ flexShrink: 0, transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'none' }}>
@@ -76,7 +78,7 @@ export default function Select({ options, value, onChange, placeholder = 'Select
           boxShadow: '0 12px 40px rgba(0,0,0,0.12)', overflow: 'hidden',
           animation: 'selectDrop 0.15s cubic-bezier(.22,1,.36,1)',
         }}>
-          <style>{`@keyframes selectDrop{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}`}</style>
+          <style>{tr(`@keyframes selectDrop{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}`)}</style>
 
           {searchable && (
             <div style={{ padding: '10px 10px 6px', borderBottom: '1px solid #F3F4F6' }}>
@@ -108,12 +110,12 @@ export default function Select({ options, value, onChange, placeholder = 'Select
                   }}
                   onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = '#F9FAFB'; }}
                   onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}>
-                  {o.color && (
+                  {tr(o.color && (
                     <div style={{ width: 8, height: 8, borderRadius: '50%', background: o.color, flexShrink: 0 }} />
-                  )}
+                  ))}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.label}</div>
-                    {o.sub && <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 1 }}>{o.sub}</div>}
+                    <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tr(o.label)}</div>
+                    {tr(o.sub && <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 1 }}>{o.sub}</div>)}
                   </div>
                   {active && (
                     <svg viewBox="0 0 24 24" width={13} height={13} fill="none" stroke="#4F6BFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

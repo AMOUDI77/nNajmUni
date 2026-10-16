@@ -1,3 +1,4 @@
+import { useCopy } from '../copy';
 import { useState } from 'react';
 import { C } from '../styles/theme';
 import { usePreferences } from '../i18n';
@@ -25,45 +26,47 @@ const APPTS = [
 
 /* ─── Text feature card ─────────────────────────────────────────────────── */
 function TextCard({ icon, badge, headline, sub, cta, onCta }: { icon: React.ReactNode; badge?: string; headline: string; sub: string; cta?: string; onCta?: () => void }) {
+  const { tr, language: copyLanguage } = useCopy();
   const [hov, setHov] = useState(false);
   return (
     <div className="feature-card" onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
       style={{ background:'#fff', borderRadius:18, padding:32, border:`1px solid ${hov ? '#D8DEFF' : C.border}`, boxShadow: hov ? '0 8px 24px rgba(79,107,255,0.07)' : 'none', transition:'all 0.2s', cursor:'default', display:'flex', flexDirection:'column', gap:14 }}>
       <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between' }}>
         <div style={{ width:40, height:40, borderRadius:10, background:'#F9F5FF', border:`1px solid ${C.border}`, display:'flex', alignItems:'center', justifyContent:'center' }}>
-          {icon}
+          {tr(icon)}
         </div>
-        {badge && <span style={{ fontSize:10, fontWeight:700, color: C.purpleMid, background: C.purplePale, borderRadius:20, padding:'3px 10px', letterSpacing:'0.3px' }}>{badge}</span>}
+        {tr(badge && <span style={{ fontSize:10, fontWeight:700, color: C.purpleMid, background: C.purplePale, borderRadius:20, padding:'3px 10px', letterSpacing:'0.3px' }}>{badge}</span>)}
       </div>
       <div>
-        <h3 style={{ fontSize:18, fontWeight:800, color:'#111827', letterSpacing:'-0.5px', marginBottom:7 }}>{headline}</h3>
-        <p style={{ fontSize:13, color: C.textMuted, lineHeight:1.7 }}>{sub}</p>
+        <h3 style={{ fontSize:18, fontWeight:800, color:'#111827', letterSpacing:'-0.5px', marginBottom:7 }}>{tr(headline)}</h3>
+        <p style={{ fontSize:13, color: C.textMuted, lineHeight:1.7 }}>{tr(sub)}</p>
       </div>
-      {cta && (
+      {tr(cta && (
         <button onClick={onCta} style={{ alignSelf:'flex-start', marginTop:4, background: hov ? C.purpleMid : '#fff', color: hov ? '#fff' : C.purpleMid, border:`1px solid ${hov ? C.purpleMid : '#D8DEFF'}`, borderRadius:50, padding:'9px 20px', fontSize:13, fontWeight:600, cursor:'pointer', transition:'all 0.2s' }}>
           {cta}
         </button>
-      )}
+      ))}
     </div>
   );
 }
 
 /* ─── Document portal ───────────────────────────────────────────────────── */
 function DocUploadCard() {
+  const { tr, language: copyLanguage } = useCopy();
   const { t } = usePreferences();
   return (
     <div className="doc-card" style={{ background:'#fff', borderRadius:18, padding:28, border:`1px solid ${C.border}` }}>
       <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:18 }}>
         <div style={{ width:32, height:32, borderRadius:8, background:'#F9F5FF', border:`1px solid ${C.border}`, display:'flex', alignItems:'center', justifyContent:'center' }}>{IconFile}</div>
         <div>
-          <div style={{ fontSize:13, fontWeight:700, color:'#111827' }}>{t('features.docs')}</div>
-          <div style={{ fontSize:11, color: C.textMuted }}>{t('features.docsCopy')}</div>
+          <div style={{ fontSize:13, fontWeight:700, color:'#111827' }}>{tr(t('features.docs'))}</div>
+          <div style={{ fontSize:11, color: C.textMuted }}>{tr(t('features.docsCopy'))}</div>
         </div>
       </div>
       <div style={{ display:'flex', flexDirection:'column', gap:7, marginBottom:14 }}>
         {DOCS.map((doc, i) => (
           <div key={i} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'9px 12px', borderRadius:10, background:'#FAFAFA', border:`1px solid ${C.border}` }}>
-            <span style={{ fontSize:12, fontWeight:500, color:'#374151' }}>{doc.label}</span>
+            <span style={{ fontSize:12, fontWeight:500, color:'#374151' }}>{tr(doc.label)}</span>
           </div>
         ))}
       </div>
@@ -73,6 +76,7 @@ function DocUploadCard() {
 
 /* ─── Appointments card ─────────────────────────────────────────────────── */
 function CalendarCard() {
+  const { tr, language: copyLanguage } = useCopy();
   const { t } = usePreferences();
   return (
     <div className="calendar-card" style={{ background:'#fff', borderRadius:18, padding:28, border:`1px solid ${C.border}` }}>
@@ -81,21 +85,21 @@ function CalendarCard() {
           <div style={{ width:32, height:32, borderRadius:8, background:'#F9F5FF', border:`1px solid ${C.border}`, display:'flex', alignItems:'center', justifyContent:'center' }}>
             <svg {...I} width={16} height={16}><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
           </div>
-          <div style={{ fontSize:13, fontWeight:700, color:'#111827' }}>{t('features.appointments')}</div>
+          <div style={{ fontSize:13, fontWeight:700, color:'#111827' }}>{tr(t('features.appointments'))}</div>
         </div>
         <span style={{ fontSize:11, color: C.purpleMid, fontWeight:600 }}>View All</span>
       </div>
       {APPTS.map((item, i) => (
         <div key={i} style={{ display:'flex', gap:12, alignItems:'center', padding:'10px 0', borderBottom: i < APPTS.length-1 ? `1px solid #F3F0FA` : 'none' }}>
           <div style={{ width:42, height:42, background:'#F9F5FF', border:`1px solid ${C.border}`, borderRadius:10, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-            <span style={{ fontSize:8, color: C.purpleMid, fontWeight:800, letterSpacing:'0.5px' }}>{item.date.split(' ')[0].toUpperCase()}</span>
-            <span style={{ fontSize:15, color:'#111827', fontWeight:800, lineHeight:1.1 }}>{item.date.split(' ')[1]}</span>
+            <span style={{ fontSize:8, color: C.purpleMid, fontWeight:800, letterSpacing:'0.5px' }}>{tr(item.date.split(' ')[0].toUpperCase())}</span>
+            <span style={{ fontSize:15, color:'#111827', fontWeight:800, lineHeight:1.1 }}>{tr(item.date.split(' ')[1])}</span>
           </div>
           <div style={{ flex:1 }}>
-            <div style={{ fontSize:13, fontWeight:600, color:'#111827' }}>{item.title}</div>
-            <div style={{ fontSize:11, color: C.textMuted, marginTop:2 }}>{item.time}</div>
+            <div style={{ fontSize:13, fontWeight:600, color:'#111827' }}>{tr(item.title)}</div>
+            <div style={{ fontSize:11, color: C.textMuted, marginTop:2 }}>{tr(item.time)}</div>
           </div>
-          <span style={{ fontSize:10, fontWeight:600, color: C.purpleMid, background: C.purplePale, borderRadius:20, padding:'3px 9px' }}>{item.type}</span>
+          <span style={{ fontSize:10, fontWeight:600, color: C.purpleMid, background: C.purplePale, borderRadius:20, padding:'3px 9px' }}>{tr(item.type)}</span>
         </div>
       ))}
     </div>
@@ -104,6 +108,7 @@ function CalendarCard() {
 
 /* ─── MAIN ─────────────────────────────────────────────────────────────── */
 export default function Features() {
+  const { tr, language: copyLanguage } = useCopy();
   const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   const { t } = usePreferences();
 
@@ -111,10 +116,10 @@ export default function Features() {
     <section style={{ padding:'clamp(60px,8vw,96px) clamp(20px,4vw,40px) clamp(60px,8vw,80px)', maxWidth:1200, margin:'0 auto' }}>
       <div style={{ marginBottom:40 }}>
         <h2 style={{ fontSize:'clamp(24px,3.5vw,38px)', fontWeight:800, color:'#111827', letterSpacing:'-1px', lineHeight:1.2 }}>
-          {t('features.title')}
+          {tr(t('features.title'))}
         </h2>
         <p style={{ fontSize:14, color: C.textMuted, maxWidth:480, lineHeight:1.7, marginTop:8 }}>
-          {t('features.copy')}
+          {tr(t('features.copy'))}
         </p>
       </div>
       <div className="features-grid" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20 }}>

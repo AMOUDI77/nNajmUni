@@ -1,9 +1,11 @@
+import { useCopy } from '../copy';
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import { track, applicationMessage, whatsappMessageUrl } from "../discovery";
 import WhatsAppIcon from "../components/WhatsAppIcon";
 export default function ApplicationAssistance() {
+  const { tr, language: copyLanguage } = useCopy();
   const [params] = useSearchParams();
 
   const [busy, setBusy] = useState(false),
@@ -18,23 +20,20 @@ export default function ApplicationAssistance() {
     );
   }, []);
   return (
-    <main className="student-page student-form-page" dir="rtl">
+    <main className="student-page student-form-page" dir={copyLanguage === "ar" ? "rtl" : "ltr"}>
       <header>
-        <p className="student-eyebrow">خطوة أولى بسيطة</p>
-        <h1>يلا ابدأ قبولك</h1>
+        <p className="student-eyebrow">{tr("خطوة أولى بسيطة")}</p>
+        <h1>{tr("يلا ابدأ قبولك")}</h1>
         <p>
-          أرسل بيانات التواصل وما تعرفه عن خطتك. يراجعها مستشار معك قبل أي تقديم
-          رسمي أو طلب مستندات.
-        </p>
+          {tr("أرسل بيانات التواصل وما تعرفه عن خطتك. يراجعها مستشار معك قبل أي تقديم رسمي أو طلب مستندات.")}</p>
       </header>
       {done ? (
         <section className="student-card" role="status">
-          <h2>تم حفظ طلبك وتجهيز رسالة واتساب</h2>
+          <h2>{tr("تم حفظ طلبك وتجهيز رسالة واتساب")}</h2>
           <p>
-            اضغط «إرسال» داخل واتساب لإرسال التفاصيل إلى Najmuni. هذا طلب مساعدة وليس تقديمًا رسميًا للجامعة.
-          </p>
-          <pre style={{whiteSpace:'pre-wrap',font:'inherit',marginBlock:20}}>{message}</pre>
-          <a className="student-button" href={handoff} onClick={() => track('whatsapp_handoff_clicked')}>فتح رسالة الطلب في واتساب</a>
+            {tr("اضغط «إرسال» داخل واتساب لإرسال التفاصيل إلى Najmuni. هذا طلب مساعدة وليس تقديمًا رسميًا للجامعة.")}</p>
+          <pre style={{whiteSpace:'pre-wrap',font:'inherit',marginBlock:20}}>{tr(message)}</pre>
+          <a className="student-button" href={handoff} onClick={() => track('whatsapp_handoff_clicked')}>{tr("فتح رسالة الطلب في واتساب")}</a>
         </section>
       ) : (
         <form
@@ -62,7 +61,7 @@ export default function ApplicationAssistance() {
               program: String(data.get('program')).trim(),
               level: params.get('level') || '',
               preferredStart: String(data.get('start')).trim(),
-            });
+            }, copyLanguage);
             const destination = whatsappMessageUrl(prepared);
             setMessage(prepared);
             setHandoff(destination || '');
@@ -95,69 +94,62 @@ export default function ApplicationAssistance() {
           }}
         >
           <label>
-            الاسم الكامل
-            <input name="name" autoComplete="name" required maxLength={120} />
+            {tr("الاسم الكامل")}<input name="name" autoComplete="name" required maxLength={120} />
           </label>
           <label>
-            رقم واتساب مع رمز الدولة
-            <input
+            {tr("رقم واتساب مع رمز الدولة")}<input
               name="phone"
               type="tel"
               dir="ltr"
               autoComplete="tel"
-              placeholder="+رمز الدولة ثم الرقم"
+              placeholder={tr("+رمز الدولة ثم الرقم")}
               required
               maxLength={20}
             />
           </label>
           <label>
-            المؤهل الدراسي (اختياري)
-            <select name="qualification">
-              <option value="">اختر مؤهلك</option>
-              <option>ثانوية</option>
-              <option>دبلوم</option>
-              <option>بكالوريوس</option>
-              <option>ماجستير</option>
-              <option>غير ذلك</option>
+            {tr("المؤهل الدراسي (اختياري)")}<select name="qualification">
+              <option value="">{tr("اختر مؤهلك")}</option>
+              <option value="ثانوية">{tr("ثانوية")}</option>
+              <option value="دبلوم">{tr("دبلوم")}</option>
+              <option value="بكالوريوس">{tr("بكالوريوس")}</option>
+              <option value="ماجستير">{tr("ماجستير")}</option>
+              <option value="غير ذلك">{tr("غير ذلك")}</option>
             </select>
           </label>
           <label>
-            الجامعة أو المعهد (اختياري)
-            <input
+            {tr("الجامعة أو المعهد (اختياري)")}<input
               name="university"
               defaultValue={params.get("university") || ""}
               maxLength={160}
             />
           </label>
           <label>
-            التخصص (اختياري)
-            <input
+            {tr("التخصص (اختياري)")}<input
               name="program"
               defaultValue={params.get("program") || ""}
               maxLength={160}
             />
           </label>
           <label>
-            موعد البداية المفضل (اختياري)
-            <input
+            {tr("موعد البداية المفضل (اختياري)")}<input
               name="start"
-              placeholder="مثلاً: بداية السنة القادمة"
+              placeholder={tr("مثلاً: بداية السنة القادمة")}
               maxLength={160}
             />
           </label>
           <label className="student-consent">
             <input type="checkbox" required />
-            أوافق على استخدام بياناتي للتواصل معي بخصوص هذا الطلب.
-          </label>
-          <p>سنحفظ طلبك ونفتح واتساب برسالة تضم بيانات النموذج. راجعها واضغط «إرسال» هناك. لا تحتاج لرفع مستندات الآن.</p>
-          {error && (
+            {tr("أوافق على استخدام بياناتي للتواصل معي بخصوص هذا الطلب.")}</label>
+          <p>{tr("سنحفظ طلبك ونفتح واتساب برسالة تضم بيانات النموذج. راجعها واضغط «إرسال» هناك. لا تحتاج لرفع مستندات الآن.")}</p>
+          {tr(error && (
             <p role="alert" className="student-notice">
-              {error}
-              {handoff && <a className="student-button secondary" href={handoff} onClick={() => track('whatsapp_handoff_clicked')}>متابعة الطلب عبر واتساب</a>}
+              {tr(error)}
+              {handoff && <a className="student-button secondary" href={handoff} onClick={() => track('whatsapp_handoff_clicked')}>{tr("متابعة الطلب عبر واتساب")}</a>}
             </p>
-          )}
+          ))}
           <button disabled={busy} className="student-button">
-            <WhatsAppIcon />{busy ? "جارٍ تجهيز طلبك…" : "أرسل طلبك عبر واتساب"}
+            <WhatsAppIcon />{tr(busy ? "جارٍ تجهيز طلبك…" : "أرسل طلبك عبر واتساب")}
           </button>
         </form>
       )}

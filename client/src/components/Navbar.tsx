@@ -1,3 +1,4 @@
+import { useCopy } from '../copy';
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Logo from './Logo';
@@ -20,6 +21,7 @@ function scrollToHash(hash: string) {
 }
 
 export default function Navbar() {
+  const { tr, language: copyLanguage } = useCopy();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const { pathname, hash } = useLocation();
@@ -117,7 +119,7 @@ export default function Navbar() {
                 style={{ fontSize: 14, fontWeight: 600, color: linkColor, textDecoration: 'none', whiteSpace: 'nowrap', transition: 'all 0.2s', padding: '10px 8px', borderRadius: 12 }}
                 onMouseEnter={e => { e.currentTarget.style.color = '#111B3D'; e.currentTarget.style.background = '#F4F4F5'; }}
                 onMouseLeave={e => { e.currentTarget.style.color = linkColor; e.currentTarget.style.background = 'transparent'; }}>
-                {t(key)}
+                {tr(t(key))}
               </a>
             ))}
           </div>
@@ -126,7 +128,7 @@ export default function Navbar() {
             <button type="button" onClick={toggleLanguage} style={prefButtonStyle}
               onMouseEnter={e => { e.currentTarget.style.background = '#F4F4F5'; e.currentTarget.style.color = '#111B3D'; }}
               onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#3F3F46'; }}>
-              {t('nav.language')}
+              {tr(t('nav.language'))}
             </button>
           </div>
 
@@ -134,7 +136,7 @@ export default function Navbar() {
             style={{ background: 'linear-gradient(135deg, #7B61FF 0%, #4F6BFF 100%)', color: '#fff', borderRadius: 999, padding: '10px 18px', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0, textDecoration: 'none', boxShadow: '0 14px 30px rgba(79,107,255,0.24)', transition: 'transform 0.2s, box-shadow 0.2s', display: 'inline-block' }}
             onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 18px 36px rgba(79,107,255,0.32)'; }}
             onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 14px 30px rgba(79,107,255,0.24)'; }}>
-            <WhatsAppIcon />{t('nav.apply')}
+            <WhatsAppIcon />{tr(t('nav.apply'))}
           </a>}
 
           <button className="nav-hamburger" aria-expanded={menuOpen} aria-label={menuOpen ? t('nav.closeMenu') : t('nav.openMenu')}
@@ -163,16 +165,16 @@ export default function Navbar() {
                 style={{ fontSize: 15, fontWeight: 600, color: C.text, padding: '13px 12px', borderRadius: 10, textDecoration: 'none', display: 'block', transition: 'background 0.15s' }}
                 onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#F4F4F5'; }}
                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}>
-                {t(key)}
+                {tr(t(key))}
               </a>
             ))}
             <div style={{ height: 1, background: '#F4F4F5', margin: '8px 0' }} />
             <button type="button" onClick={toggleLanguage} style={{ ...prefButtonStyle, borderRadius: 12, minHeight: 46, marginBottom: 10, background: '#F4F4F5' }}>
-              {t('nav.language')}
+              {tr(t('nav.language'))}
             </button>
             {showApply && <a href="/apply" onClick={e => handleClick(e, '/apply')}
               style={{ display: 'block', textAlign: 'center', background: 'linear-gradient(135deg, #7B61FF 0%, #4F6BFF 100%)', color: '#fff', borderRadius: 12, padding: '14px', fontSize: 15, fontWeight: 700, textDecoration: 'none' }}>
-              <WhatsAppIcon />{t('nav.apply')}
+              <WhatsAppIcon />{tr(t('nav.apply'))}
             </a>}
           </div>
         </div>

@@ -1,3 +1,4 @@
+import { useCopy } from '../../../copy';
 import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 import type { StudyPlanProfile } from '../types';
 
@@ -25,6 +26,7 @@ function loadDraft(): StudyPlanProfile {
 }
 
 export function StudyPlanProvider({ children }: { children: ReactNode }) {
+  const { tr, language: copyLanguage } = useCopy();
   const [profile, setProfile] = useState<StudyPlanProfile>(loadDraft);
   useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(profile)); }, [profile]);
   const value = useMemo(() => ({
@@ -32,7 +34,7 @@ export function StudyPlanProvider({ children }: { children: ReactNode }) {
     updateProfile: (patch: Partial<StudyPlanProfile>) => setProfile(current => ({ ...current, ...patch })),
     resetProfile: () => setProfile(emptyProfile),
   }), [profile]);
-  return <StudyPlanContext.Provider value={value}>{children}</StudyPlanContext.Provider>;
+  return <StudyPlanContext.Provider value={value}>{tr(children)}</StudyPlanContext.Provider>;
 }
 
 export function useStudyPlan() {

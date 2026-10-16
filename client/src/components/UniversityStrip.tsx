@@ -1,3 +1,4 @@
+import { useCopy } from '../copy';
 import { institutionLogos as OFFICIAL_LOGOS } from '../institutionLogos';
 import { useState, useEffect, memo } from 'react';
 import { C } from '../styles/theme';
@@ -35,6 +36,7 @@ function toInstituteItems(institutes: Institute[]): StripItem[] {
 }
 
 const LogoChip = memo(function LogoChip({ item, hov }: { item: StripItem; hov: boolean }) {
+  const { tr, language: copyLanguage } = useCopy();
   const officialLogo = OFFICIAL_LOGOS[item.abbr];
   const [src, setSrc] = useState(
     officialLogo || (item.domain ? `https://www.google.com/s2/favicons?domain=${item.domain}&sz=128` : '')
@@ -87,7 +89,7 @@ const LogoChip = memo(function LogoChip({ item, hov }: { item: StripItem; hov: b
           />
         ) : (
           <span style={{ fontSize: 15, fontWeight: 900, color: hov ? '#4F6BFF' : '#9CA3AF', transition: 'color 0.3s' }}>
-            {item.abbr.slice(0, 2).toUpperCase()}
+            {tr(item.abbr.slice(0, 2).toUpperCase())}
           </span>
         )}
       </div>
@@ -101,13 +103,14 @@ const LogoChip = memo(function LogoChip({ item, hov }: { item: StripItem; hov: b
         maxWidth: 88,
         transition: 'color 0.3s',
       }}>
-        {item.abbr}
+        {tr(item.abbr)}
       </span>
     </div>
   );
 });
 
 export default function UniversityStrip() {
+  const { tr, language: copyLanguage } = useCopy();
   const [items, setItems] = useState<StripItem[]>(() => [...toStripItems(UNIVERSITIES), ...FALLBACK_INSTITUTES]);
   const [hovIdx, setHovIdx] = useState<number | null>(null);
   const { t } = usePreferences();
@@ -136,13 +139,13 @@ export default function UniversityStrip() {
           background: C.purplePale, borderRadius: 50, padding: '5px 14px', marginBottom: 12,
         }}>
           <div style={{ width: 5, height: 5, borderRadius: '50%', background: C.purpleMid }} />
-          <span style={{ fontSize: 10, fontWeight: 700, color: C.purpleMid, letterSpacing: '3px', textTransform: 'uppercase' }}>{t('partners.badge')}</span>
+          <span style={{ fontSize: 10, fontWeight: 700, color: C.purpleMid, letterSpacing: '3px', textTransform: 'uppercase' }}>{tr(t('partners.badge'))}</span>
         </div>
         <h2 style={{ fontSize: 'clamp(20px,2.8vw,30px)', fontWeight: 800, color: '#111827', letterSpacing: '-0.8px', lineHeight: 1.15 }}>
-          {t('partners.title')}
+          {tr(t('partners.title'))}
         </h2>
         <p style={{ fontSize: 13, color: '#9CA3AF', marginTop: 6 }}>
-          {items.length} {t('partners.subtitle')}
+          {items.length} {tr(t('partners.subtitle'))}
         </p>
       </div>
 

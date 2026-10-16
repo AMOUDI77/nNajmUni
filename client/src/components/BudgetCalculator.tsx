@@ -1,3 +1,4 @@
+import { useCopy } from '../copy';
 import { useState, useEffect, useRef } from 'react';
 import { C } from '../styles/theme';
 import { usePreferences, type TranslationKey } from '../i18n';
@@ -52,6 +53,7 @@ function FloatSelect({ label, value, onChange, options }: {
   onChange: (v: string) => void;
   options: Opt[];
 }) {
+  const { tr, language: copyLanguage } = useCopy();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const selected = options.find(o => o.value === value)!;
@@ -65,7 +67,7 @@ function FloatSelect({ label, value, onChange, options }: {
   return (
     <div ref={ref} style={{ position: 'relative' }}>
       <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: MUTED, marginBottom: 7, letterSpacing: '0.2px' }}>
-        {label}
+        {tr(label)}
       </label>
 
       {/* trigger */}
@@ -84,7 +86,7 @@ function FloatSelect({ label, value, onChange, options }: {
         }}
       >
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {selected.label}
+          {tr(selected.label)}
         </span>
         <ChevDown open={open} />
       </button>
@@ -122,10 +124,10 @@ function FloatSelect({ label, value, onChange, options }: {
               >
                 <div>
                   <div style={{ fontSize: 13, fontWeight: isSelected ? 600 : 500, color: isSelected ? PURPLE : TEXT, lineHeight: 1.3 }}>
-                    {opt.label}
+                    {tr(opt.label)}
                   </div>
                   <div style={{ fontSize: 11, color: isSelected ? `${PURPLE}90` : '#9CA3AF', marginTop: 3, lineHeight: 1.4 }}>
-                    {opt.sub}
+                    {tr(opt.sub)}
                   </div>
                 </div>
                 {isSelected && <CheckMark />}
@@ -139,6 +141,7 @@ function FloatSelect({ label, value, onChange, options }: {
 }
 
 export default function BudgetCalculator() {
+  const { tr, language: copyLanguage } = useCopy();
   const { t } = usePreferences();
   const localizeOptions = (options: RawOpt[]): Opt[] => options.map(opt => ({
     value: opt.value,
@@ -165,10 +168,10 @@ export default function BudgetCalculator() {
     <section style={{ padding: 'clamp(60px,8vw,80px) clamp(20px,4vw,40px)', maxWidth: 1200, margin: '0 auto' }} id="calculator">
       <div style={{ textAlign: 'center', marginBottom: 48 }}>
         <h2 style={{ fontSize: 'clamp(28px,4vw,42px)', fontWeight: 800, color: TEXT, letterSpacing: '-1px', lineHeight: 1.15, marginBottom: 14 }}>
-          {t('budget.titleA')} <span style={{ color: C.purpleMid }}>{t('budget.titleB')}</span>
+          {tr(t('budget.titleA'))} <span style={{ color: C.purpleMid }}>{tr(t('budget.titleB'))}</span>
         </h2>
         <p style={{ fontSize: 16, color: MUTED, maxWidth: 500, margin: '0 auto', lineHeight: 1.7 }}>
-          {t('budget.copy')}
+          {tr(t('budget.copy'))}
         </p>
       </div>
 
@@ -181,7 +184,7 @@ export default function BudgetCalculator() {
             <FloatSelect label={t('budget.lifestyle')}        value={life}    onChange={setLife}    options={lifestyleOptions} />
           </div>
           <p style={{ fontSize: 11, color: '#9CA3AF', lineHeight: 1.6, marginTop: 22 }}>
-            {t('budget.note')}
+            {tr(t('budget.note'))}
           </p>
         </div>
 
@@ -197,23 +200,23 @@ export default function BudgetCalculator() {
               { label: t('budget.total'), value: `RM ${totalYearly.toLocaleString()}`, big: true },
             ].map(({ label, value, big }) => (
               <div key={label} className="budget-result-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 0', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', fontWeight: 500 }}>{label}</span>
-                <span style={{ fontSize: big ? 26 : 19, fontWeight: 800, color: '#fff', letterSpacing: '-0.5px' }}>{value}</span>
+                <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', fontWeight: 500 }}>{tr(label)}</span>
+                <span style={{ fontSize: big ? 26 : 19, fontWeight: 800, color: '#fff', letterSpacing: '-0.5px' }}>{tr(value)}</span>
               </div>
             ))}
           </div>
 
           <div className="budget-card" style={{ background: CARD, borderRadius: 20, padding: 24, border: `1px solid ${BORDER}`, flex: '0 0 auto' }}>
-            <p style={{fontSize:13,marginBottom:16}}>المجموع تقديري للدراسة والسكن والمعيشة فقط؛ لا يشمل التأشيرة والتأمين والودائع والرسوم الإضافية غير المتاحة. الرسوم الدراسية هنا افتراض حسب نوع الجامعة.</p>
-            <div style={{ fontSize: 13, fontWeight: 700, color: TEXT, marginBottom: 14 }}>{t('budget.included')}</div>
+            <p style={{fontSize:13,marginBottom:16}}>{tr("المجموع تقديري للدراسة والسكن والمعيشة فقط؛ لا يشمل التأشيرة والتأمين والودائع والرسوم الإضافية غير المتاحة. الرسوم الدراسية هنا افتراض حسب نوع الجامعة.")}</p>
+            <div style={{ fontSize: 13, fontWeight: 700, color: TEXT, marginBottom: 14 }}>{tr(t('budget.included'))}</div>
             {[
               { icon: '🎓', text: t('budget.includedTuition') },
               { icon: '🏠', text: `${accomItem.label} - RM ${accomItem.monthly!.toLocaleString()} / ${t('budget.perMonth')}` },
               { icon: '🍽️', text: `${lifeItem.label} ${t('budget.lifestyleLabel')} - RM ${lifeItem.monthly!.toLocaleString()} / ${t('budget.perMonth')}` },
             ].map(({ icon, text }) => (
               <div key={text} style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 10 }}>
-                <span style={{ fontSize: 16 }}>{icon}</span>
-                <span style={{ fontSize: 13, color: MUTED }}>{text}</span>
+                <span style={{ fontSize: 16 }}>{tr(icon)}</span>
+                <span style={{ fontSize: 13, color: MUTED }}>{tr(text)}</span>
               </div>
             ))}
           </div>

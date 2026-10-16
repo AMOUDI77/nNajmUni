@@ -1,3 +1,4 @@
+import { useCopy } from '../copy';
 import { useState } from 'react';
 import { UNIVERSITIES } from '../data';
 import Select from './Select';
@@ -50,15 +51,17 @@ function blur(e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) {
 }
 
 function FieldWrap({ label, children }: { label: string; children: React.ReactNode }) {
+  const { tr, language: copyLanguage } = useCopy();
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-      <label style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>{label}</label>
-      {children}
+      <label style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>{tr(label)}</label>
+      {tr(children)}
     </div>
   );
 }
 
 export default function BookingSection() {
+  const { tr, language: copyLanguage } = useCopy();
   const { t } = usePreferences();
   const [form, setForm] = useState({
     name: '', email: '', countryCode: '+60', phone: '',
@@ -107,12 +110,12 @@ export default function BookingSection() {
 
         {/* Left */}
         <div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#4F6BFF', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: 14 }}>{t('booking.badge')}</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#4F6BFF', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: 14 }}>{tr(t('booking.badge'))}</div>
           <h2 style={{ fontSize: 36, fontWeight: 900, color: '#111827', letterSpacing: '-1.5px', lineHeight: 1.15, marginBottom: 18 }}>
-            {t('booking.title')}
+            {tr(t('booking.title'))}
           </h2>
           <p style={{ fontSize: 15, color: '#6B7280', lineHeight: 1.7, marginBottom: 32, maxWidth: 400 }}>
-            {t('booking.copy')}
+            {tr(t('booking.copy'))}
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {[
@@ -123,8 +126,8 @@ export default function BookingSection() {
               <div key={item.title} style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
                 <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#4F6BFF', marginTop: 7, flexShrink: 0 }} />
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: '#111827', marginBottom: 2 }}>{item.title}</div>
-                  <div style={{ fontSize: 13, color: '#9CA3AF' }}>{item.desc}</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: '#111827', marginBottom: 2 }}>{tr(item.title)}</div>
+                  <div style={{ fontSize: 13, color: '#9CA3AF' }}>{tr(item.desc)}</div>
                 </div>
               </div>
             ))}
@@ -138,10 +141,10 @@ export default function BookingSection() {
               <div style={{ width: 60, height: 60, borderRadius: '50%', background: '#F0FDF4', border: '2px solid #10B981', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
                 <svg viewBox="0 0 24 24" width={26} height={26} fill="none" stroke="#10B981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
               </div>
-              <div style={{ fontSize: 20, fontWeight: 800, color: '#111827', marginBottom: 8 }}>{t('booking.success')}</div>
-              <div style={{ fontSize: 13, color: '#6B7280', lineHeight: 1.6 }}>{t('booking.successCopy')}</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: '#111827', marginBottom: 8 }}>{tr(t('booking.success'))}</div>
+              <div style={{ fontSize: 13, color: '#6B7280', lineHeight: 1.6 }}>{tr(t('booking.successCopy'))}</div>
               <button onClick={() => setStatus('idle')} style={{ marginTop: 24, padding: '10px 24px', borderRadius: 10, border: 'none', background: '#4F6BFF', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-                {t('booking.another')}
+                {tr(t('booking.another'))}
               </button>
             </div>
           ) : (
@@ -206,13 +209,13 @@ export default function BookingSection() {
 
               {status === 'error' && (
                 <div style={{ fontSize: 12, color: '#EF4444', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '10px 14px' }}>
-                  {t('booking.error')}
+                  {tr(t('booking.error'))}
                 </div>
               )}
 
               <button type="submit" disabled={!canSubmit}
                 style={{ padding: '14px', borderRadius: 12, border: 'none', background: canSubmit ? '#4F6BFF' : '#F3F4F6', color: canSubmit ? '#fff' : '#9CA3AF', fontSize: 14, fontWeight: 700, cursor: canSubmit ? 'pointer' : 'default', transition: 'all 0.2s', letterSpacing: '-0.3px' }}>
-                {status === 'loading' ? t('booking.submitting') : t('booking.submit')}
+                {tr(status === 'loading' ? t('booking.submitting') : t('booking.submit'))}
               </button>
             </form>
           )}

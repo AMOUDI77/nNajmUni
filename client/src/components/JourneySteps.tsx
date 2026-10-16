@@ -1,3 +1,4 @@
+import { useCopy } from '../copy';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { usePreferences } from '../i18n';
@@ -53,6 +54,7 @@ const STEPS = [
 ];
 
 function StepCard({ step, isLast }: { step: typeof STEPS[0]; isLast: boolean }) {
+  const { tr, language: copyLanguage } = useCopy();
   const { t } = usePreferences();
   const [hov, setHov] = useState(false);
   return (
@@ -74,14 +76,14 @@ function StepCard({ step, isLast }: { step: typeof STEPS[0]; isLast: boolean }) 
       {/* gradient header */}
       <div style={{ background: step.gradient, padding: '24px 24px 20px', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', right: 10, top: -10, fontSize: 96, fontWeight: 900, color: 'rgba(255,255,255,0.07)', letterSpacing: '-6px', lineHeight: 1, userSelect: 'none', pointerEvents: 'none' }}>
-          {step.num}
+          {tr(step.num)}
         </div>
         <div style={{ width: 48, height: 48, borderRadius: 14, background: 'rgba(255,255,255,0.18)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, border: '1px solid rgba(255,255,255,0.25)' }}>
           {step.icon}
         </div>
-        <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.55)', letterSpacing: '2.5px', textTransform: 'uppercase', marginBottom: 4 }}>{step.week}</div>
-        <div style={{ fontSize: 24, fontWeight: 900, color: '#fff', letterSpacing: '-0.5px', lineHeight: 1.1 }}>{step.title}</div>
-        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 3 }}>{step.sub}</div>
+        <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.55)', letterSpacing: '2.5px', textTransform: 'uppercase', marginBottom: 4 }}>{tr(step.week)}</div>
+        <div style={{ fontSize: 24, fontWeight: 900, color: '#fff', letterSpacing: '-0.5px', lineHeight: 1.1 }}>{tr(step.title)}</div>
+        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 3 }}>{tr(step.sub)}</div>
       </div>
 
       {/* content */}
@@ -91,7 +93,7 @@ function StepCard({ step, isLast }: { step: typeof STEPS[0]; isLast: boolean }) 
             <div style={{ width: 18, height: 18, borderRadius: '50%', background: `${step.color}12`, border: `1.5px solid ${step.color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
               <svg viewBox="0 0 24 24" width={10} height={10} fill="none" stroke={step.color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
             </div>
-            <span style={{ fontSize: 13, color: '#4B5563', lineHeight: 1.65 }}>{item}</span>
+            <span style={{ fontSize: 13, color: '#4B5563', lineHeight: 1.65 }}>{tr(item)}</span>
           </div>
         ))}
 
@@ -125,6 +127,7 @@ function VConnector() {
 }
 
 export default function JourneySteps() {
+  const { tr, language: copyLanguage } = useCopy();
   const { t } = usePreferences();
   const localizedSteps = STEPS.map((step, i) => ({
     ...step,
@@ -140,7 +143,7 @@ export default function JourneySteps() {
 
   return (
     <>
-      <style>{`
+      <style>{tr(`
         @media (max-width: 768px) {
           .steps-grid {
             align-items: stretch !important;
@@ -163,18 +166,18 @@ export default function JourneySteps() {
           .step-vconn,
           .steps-connector { display: none !important; }
         }
-      `}</style>
+      `)}</style>
 
       <section className="journey-section" style={{ background: 'linear-gradient(180deg, #FFFFFF 0%, #FAFAFA 100%)', padding: 'clamp(56px,8vw,90px) clamp(20px,4vw,40px)' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
           {/* header */}
           <div className="journey-header" style={{ textAlign: 'center', marginBottom: 52 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: '#4F6BFF', letterSpacing: '4px', textTransform: 'uppercase' }}>{t('journey.badge')}</span>
+            <span style={{ fontSize: 10, fontWeight: 700, color: '#4F6BFF', letterSpacing: '4px', textTransform: 'uppercase' }}>{tr(t('journey.badge'))}</span>
             <h2 style={{ fontSize: 'clamp(26px,4vw,44px)', fontWeight: 900, color: '#111827', letterSpacing: '-1.5px', lineHeight: 1.1, marginTop: 10, marginBottom: 14 }}>
-              {t('journey.title')}
+              {tr(t('journey.title'))}
             </h2>
             <p style={{ fontSize: 15, color: '#6B7280', maxWidth: 420, margin: '0 auto', lineHeight: 1.75 }}>
-              {t('journey.copy')}
+              {tr(t('journey.copy'))}
             </p>
           </div>
 
@@ -193,10 +196,10 @@ export default function JourneySteps() {
             ))}
           </div>
 
-          <div className="planning-tools" dir="rtl">
-            <Link to="/study-plan" className="student-card planning-tool"><span>01</span><h3>خطتك الدراسية</h3><p>حدد اهتماماتك وخذ خطة تساعدك تختار مسارك.</p><strong>جهّز خطتك ←</strong></Link>
-            <Link to="/costs" className="student-card planning-tool"><span>02</span><h3>حاسبة الميزانية</h3><p>قدّر تكاليف الدراسة والسكن والمعيشة قبل القرار.</p><strong>احسب ميزانيتك ←</strong></Link>
-            <Link to="/compare" className="student-card planning-tool"><span>03</span><h3>مقارنة الجامعات</h3><p>شوف خياراتك جنب بعض وقارن الرسوم ومعلومات الجامعة.</p><strong>قارن خياراتك ←</strong></Link>
+          <div className="planning-tools" dir={copyLanguage === "ar" ? "rtl" : "ltr"}>
+            <Link to="/study-plan" className="student-card planning-tool"><span>01</span><h3>{tr("خطتك الدراسية")}</h3><p>{tr("حدد اهتماماتك وخذ خطة تساعدك تختار مسارك.")}</p><strong>{tr("جهّز خطتك ←")}</strong></Link>
+            <Link to="/costs" className="student-card planning-tool"><span>02</span><h3>{tr("حاسبة الميزانية")}</h3><p>{tr("قدّر تكاليف الدراسة والسكن والمعيشة قبل القرار.")}</p><strong>{tr("احسب ميزانيتك ←")}</strong></Link>
+            <Link to="/compare" className="student-card planning-tool"><span>03</span><h3>{tr("مقارنة الجامعات")}</h3><p>{tr("شوف خياراتك جنب بعض وقارن الرسوم ومعلومات الجامعة.")}</p><strong>{tr("قارن خياراتك ←")}</strong></Link>
           </div>
         </div>
       </section>

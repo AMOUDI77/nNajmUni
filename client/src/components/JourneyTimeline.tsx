@@ -1,3 +1,4 @@
+import { useCopy } from '../copy';
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { UNIVERSITIES } from '../data';
@@ -33,6 +34,7 @@ const IconChevDown = ({ open }: { open: boolean }) => (
 
 /* ─── logo chip (dark bg) ────────────────────────────────────────────────────*/
 function LogoChip({ uni, size = 48 }: { uni: typeof UNIVERSITIES[0]; size?: number }) {
+  const { tr, language: copyLanguage } = useCopy();
   const [failed, setFailed] = useState(!uni.domain);
   return (
     <Link to={`/universities/${uni.id}`} style={{ textDecoration:'none', display:'flex', flexDirection:'column', alignItems:'center', gap:6 }}>
@@ -42,15 +44,16 @@ function LogoChip({ uni, size = 48 }: { uni: typeof UNIVERSITIES[0]; size?: numb
         {uni.domain && !failed
           ? <img src={`https://www.google.com/s2/favicons?domain=${uni.domain}&sz=64`} alt={uni.abbr} loading="lazy" decoding="async" onError={() => setFailed(true)}
               style={{ width:size*0.58, height:size*0.58, objectFit:'contain' }} />
-          : <span style={{ fontSize:size*0.25, fontWeight:800, color:'rgba(255,255,255,0.65)' }}>{uni.abbr.slice(0,2)}</span>}
+          : <span style={{ fontSize:size*0.25, fontWeight:800, color:'rgba(255,255,255,0.65)' }}>{tr(uni.abbr.slice(0,2))}</span>}
       </div>
-      <span style={{ fontSize:10, fontWeight:500, color:'rgba(255,255,255,0.35)' }}>{uni.abbr}</span>
+      <span style={{ fontSize:10, fontWeight:500, color:'rgba(255,255,255,0.35)' }}>{tr(uni.abbr)}</span>
     </Link>
   );
 }
 
 /* ─── score ring ─────────────────────────────────────────────────────────────*/
 function ScoreRing({ value, label, active }: { value: number; label: string; active: boolean }) {
+  const { tr, language: copyLanguage } = useCopy();
   const r=28, c=36, sw=5, circ=2*Math.PI*r;
   return (
     <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:5 }}>
@@ -62,7 +65,7 @@ function ScoreRing({ value, label, active }: { value: number; label: string; act
           style={{ transition:'stroke-dasharray 0.8s cubic-bezier(.22,1,.36,1), stroke 0.3s' }}/>
         <text x={c} y={c+5} textAnchor="middle" fill={TEXT} fontSize="13" fontWeight="700">{value}</text>
       </svg>
-      <span style={{ fontSize:11, fontWeight:600, color: active ? TEXT : MUTED }}>{label}</span>
+      <span style={{ fontSize:11, fontWeight:600, color: active ? TEXT : MUTED }}>{tr(label)}</span>
     </div>
   );
 }
@@ -77,6 +80,7 @@ function Dropdown<T extends string | number>({
   placeholder?: string;
   renderLabel?: (v: T) => string;
 }) {
+  const { tr, language: copyLanguage } = useCopy();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const label = (v: T) => renderLabel ? renderLabel(v) : String(v);
@@ -99,7 +103,7 @@ function Dropdown<T extends string | number>({
         fontFamily:'Inter, sans-serif',
       }}>
         <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-          {value !== '' ? label(value as T) : (placeholder ?? 'Select...')}
+          {tr(value !== '' ? label(value as T) : (placeholder ?? 'Select...'))}
         </span>
         <IconChevDown open={open} />
       </button>
@@ -127,7 +131,7 @@ function Dropdown<T extends string | number>({
               }}
               onMouseEnter={e => { if (o !== value) (e.currentTarget as HTMLElement).style.background = '#F9F5FF'; }}
               onMouseLeave={e => { if (o !== value) (e.currentTarget as HTMLElement).style.background = CARD; }}>
-              {label(o)}
+              {tr(label(o))}
             </button>
           ))}
         </div>
@@ -138,6 +142,7 @@ function Dropdown<T extends string | number>({
 
 /* ─── comparison panel ───────────────────────────────────────────────────────*/
 export function ComparisonPanel() {
+  const { tr, language: copyLanguage } = useCopy();
   const { t } = usePreferences();
   const { uniA, uniB, scoreA, scoreB, setUniA, setUniB, privateUnis } = useComparison();
   const [animKey, setAnimKey] = useState(0);
@@ -163,8 +168,8 @@ export function ComparisonPanel() {
       <div className="discovery-card-header" style={{ padding:'20px 24px', borderBottom:`1px solid ${BORDER}`, display:'flex', alignItems:'center', gap:12 }}>
         <div style={{ width:36, height:36, borderRadius:10, background:PURPLE_LT, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><IconBars /></div>
         <div>
-          <div style={{ fontSize:15, fontWeight:800, color:TEXT }}>{t('compare.title')}</div>
-          <div style={{ fontSize:12, color:MUTED }}>{t('compare.copy')}</div>
+          <div style={{ fontSize:15, fontWeight:800, color:TEXT }}>{tr(t('compare.title'))}</div>
+          <div style={{ fontSize:12, color:MUTED }}>{tr(t('compare.copy'))}</div>
         </div>
       </div>
 
@@ -180,8 +185,8 @@ export function ComparisonPanel() {
         <div className="compare-score-panel" style={{ display:'flex', alignItems:'center', gap:16, background:BG, borderRadius:14, padding:'16px 20px', border:`1px solid ${BORDER}` }}>
           <ScoreRing value={scoreA.overall} label={uniA.abbr} active={scoreA.overall >= scoreB.overall} />
           <div style={{ flex:1, textAlign:'center' }}>
-            <div style={{ fontSize:10, fontWeight:700, color:MUTED, letterSpacing:'2px', textTransform:'uppercase', marginBottom:5 }}>{t('compare.score')}</div>
-            <div style={{ fontSize:12, fontWeight:700, color:PURPLE }}>{winner.abbr} {t('compare.leads')}</div>
+            <div style={{ fontSize:10, fontWeight:700, color:MUTED, letterSpacing:'2px', textTransform:'uppercase', marginBottom:5 }}>{tr(t('compare.score'))}</div>
+            <div style={{ fontSize:12, fontWeight:700, color:PURPLE }}>{tr(winner.abbr)} {tr(t('compare.leads'))}</div>
           </div>
           <ScoreRing value={scoreB.overall} label={uniB.abbr} active={scoreB.overall > scoreA.overall} />
         </div>
@@ -195,9 +200,9 @@ export function ComparisonPanel() {
               animation:'rowSlideIn 0.32s cubic-bezier(.22,1,.36,1) both',
               animationDelay:`${i*50}ms`,
             }}>
-              <span style={{ fontSize:13, fontWeight:row.aWins ? 700 : 400, color:row.aWins ? TEXT : MUTED, textAlign:'right', paddingRight:10 }}>{row.a}</span>
-              <span style={{ fontSize:10, color:MUTED, textAlign:'center', fontWeight:500 }}>{row.label}</span>
-              <span style={{ fontSize:13, fontWeight:!row.aWins ? 700 : 400, color:!row.aWins ? TEXT : MUTED, paddingLeft:10 }}>{row.b}</span>
+              <span style={{ fontSize:13, fontWeight:row.aWins ? 700 : 400, color:row.aWins ? TEXT : MUTED, textAlign:'right', paddingRight:10 }}>{tr(row.a)}</span>
+              <span style={{ fontSize:10, color:MUTED, textAlign:'center', fontWeight:500 }}>{tr(row.label)}</span>
+              <span style={{ fontSize:13, fontWeight:!row.aWins ? 700 : 400, color:!row.aWins ? TEXT : MUTED, paddingLeft:10 }}>{tr(row.b)}</span>
             </div>
           ))}
         </div>
@@ -209,7 +214,7 @@ export function ComparisonPanel() {
               style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, padding:'11px', borderRadius:12, border:`1px solid ${BORDER}`, background:CARD, color:MUTED, fontSize:12, fontWeight:600, textDecoration:'none', transition:'all 0.2s' }}
               onMouseEnter={e => { const el=e.currentTarget as HTMLElement; el.style.borderColor=BORDER_ACT; el.style.color=PURPLE; el.style.transform='translateY(-1px)'; }}
               onMouseLeave={e => { const el=e.currentTarget as HTMLElement; el.style.borderColor=BORDER; el.style.color=MUTED; el.style.transform='none'; }}>
-              {u.abbr} <IconChevron />
+              {tr(u.abbr)} <IconChevron />
             </Link>
           ))}
         </div>
@@ -226,6 +231,7 @@ const CAREER_OPTIONS = [
 ];
 
 function AIMatchPanel() {
+  const { tr, language: copyLanguage } = useCopy();
   const { t } = usePreferences();
   const [career,   setCareer]   = useState('');
   const [scanning, setScanning] = useState(false);
@@ -262,8 +268,8 @@ function AIMatchPanel() {
       <div className="discovery-card-header" style={{ padding:'20px 24px', borderBottom:`1px solid ${BORDER}`, display:'flex', alignItems:'center', gap:12 }}>
         <div style={{ width:36, height:36, borderRadius:10, background:PURPLE_LT, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><IconSearch /></div>
         <div>
-          <div style={{ fontSize:15, fontWeight:800, color:TEXT }}>{t('match.title')}</div>
-          <div style={{ fontSize:12, color:MUTED }}>{t('match.copy')}</div>
+          <div style={{ fontSize:15, fontWeight:800, color:TEXT }}>{tr(t('match.title'))}</div>
+          <div style={{ fontSize:12, color:MUTED }}>{tr(t('match.copy'))}</div>
         </div>
       </div>
 
@@ -271,7 +277,7 @@ function AIMatchPanel() {
         {/* field selector */}
         <div>
           <label style={{ display:'block', fontSize:11, fontWeight:700, color:MUTED, marginBottom:8, letterSpacing:'0.5px', textTransform:'uppercase' }}>
-            {t('match.field')}
+            {tr(t('match.field'))}
           </label>
           <Dropdown options={CAREER_OPTIONS} value={career} onChange={handleCareer} placeholder={t('match.placeholder')} />
         </div>
@@ -294,14 +300,14 @@ function AIMatchPanel() {
         }}
           onMouseEnter={e => { if (career && !scanning) { const el=e.currentTarget as HTMLElement; el.style.transform='translateY(-1px)'; el.style.boxShadow='0 8px 24px rgba(79,107,255,0.32)'; } }}
           onMouseLeave={e => { const el=e.currentTarget as HTMLElement; el.style.transform='none'; el.style.boxShadow = career && !scanning ? '0 4px 16px rgba(79,107,255,0.24)' : 'none'; }}>
-          {scanning ? `${t('match.scanning')} ${Math.round(progress)}%` : t('match.button')}
+          {tr(scanning ? `${t('match.scanning')} ${Math.round(progress)}%` : t('match.button'))}
         </button>
 
         {/* results */}
         {results.length > 0 && (
           <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
             <div style={{ fontSize:11, fontWeight:700, color:MUTED, letterSpacing:'1px', textTransform:'uppercase' }}>
-              {t('match.top')} {career}
+              {tr(t('match.top'))} {tr(career)}
             </div>
             {results.map((r, i) => (
               <Link key={r.university.id} to={`/universities/${r.university.id}`}
@@ -320,11 +326,11 @@ function AIMatchPanel() {
                   {i===0 ? <IconStar /> : <span style={{ fontSize:11, fontWeight:800, color:MUTED }}>{i+1}</span>}
                 </div>
                 <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontSize:13, fontWeight:700, color:TEXT, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{r.university.name}</div>
-                  <div style={{ fontSize:11, color:MUTED, marginTop:2 }}>{r.reasons[1]} - {r.university.location}</div>
+                  <div style={{ fontSize:13, fontWeight:700, color:TEXT, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{tr(r.university.name)}</div>
+                  <div style={{ fontSize:11, color:MUTED, marginTop:2 }}>{tr(r.reasons[1])} - {tr(r.university.location)}</div>
                 </div>
                 <div style={{ display:'flex', alignItems:'center', gap:5, flexShrink:0 }}>
-                  {i===0 && <span style={{ fontSize:9, fontWeight:800, color:PURPLE, background:'rgba(79,107,255,0.1)', borderRadius:20, padding:'3px 8px', letterSpacing:'0.5px', textTransform:'uppercase' }}>{t('match.topPick')}</span>}
+                  {i===0 && <span style={{ fontSize:9, fontWeight:800, color:PURPLE, background:'rgba(79,107,255,0.1)', borderRadius:20, padding:'3px 8px', letterSpacing:'0.5px', textTransform:'uppercase' }}>{tr(t('match.topPick'))}</span>}
                   <IconChevron />
                 </div>
               </Link>
@@ -335,7 +341,7 @@ function AIMatchPanel() {
                 animation: visible ? 'resultSlideUp 0.42s cubic-bezier(.22,1,.36,1) 320ms both' : 'none' }}
               onMouseEnter={e => { const el=e.currentTarget as HTMLElement; el.style.borderColor=BORDER_ACT; el.style.color=PURPLE; }}
               onMouseLeave={e => { const el=e.currentTarget as HTMLElement; el.style.borderColor=BORDER; el.style.color=MUTED; }}>
-              {t('match.browse')} <IconChevron />
+              {tr(t('match.browse'))} <IconChevron />
             </Link>
           </div>
         )}
@@ -348,30 +354,31 @@ function AIMatchPanel() {
 const FEATURED_IDS = [12, 13, 10, 18, 9];
 
 export default function JourneyTimeline() {
+  const { tr, language: copyLanguage } = useCopy();
   const { t } = usePreferences();
   const featured = FEATURED_IDS.map(id => UNIVERSITIES.find(u => u.id === id)).filter(Boolean) as typeof UNIVERSITIES;
 
   return (
     <section style={{ marginBottom:80 }}>
-      <style>{`
+      <style>{tr(`
         @keyframes dropFadeIn  { from{opacity:0;transform:translateY(-6px) scale(0.98)} to{opacity:1;transform:none} }
         @keyframes rowSlideIn  { from{opacity:0;transform:translateX(-6px)} to{opacity:1;transform:none} }
         @keyframes resultSlideUp { from{opacity:0;transform:translateY(14px) scale(0.97)} to{opacity:1;transform:none} }
-      `}</style>
+      `)}</style>
 
       {/* dark header */}
       <div style={{ background:HEADER_BG, padding:'clamp(40px,5vw,56px) clamp(20px,4vw,40px) 36px' }}>
         <div style={{ maxWidth:1200, margin:'0 auto' }}>
           <div style={{ marginBottom:28 }}>
-            <span style={{ fontSize:10, fontWeight:700, color:'rgba(196,181,253,0.6)', letterSpacing:'3px', textTransform:'uppercase' }}>{t('discovery.badge')}</span>
+            <span style={{ fontSize:10, fontWeight:700, color:'rgba(196,181,253,0.6)', letterSpacing:'3px', textTransform:'uppercase' }}>{tr(t('discovery.badge'))}</span>
             <h2 style={{ fontSize:'clamp(22px,3.2vw,36px)', fontWeight:800, color:'#fff', letterSpacing:'-1.5px', lineHeight:1.15, marginTop:8 }}>
-              {t('discovery.title')}
+              {tr(t('discovery.title'))}
             </h2>
           </div>
 
           {/* partner bar */}
           <div className="discovery-partner-bar" style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:14, padding:'14px 22px', display:'flex', alignItems:'center', gap:24, flexWrap:'wrap' }}>
-            <span style={{ fontSize:10, fontWeight:600, color:'rgba(255,255,255,0.22)', letterSpacing:'2px', textTransform:'uppercase', flexShrink:0 }}>{t('discovery.partners')}</span>
+            <span style={{ fontSize:10, fontWeight:600, color:'rgba(255,255,255,0.22)', letterSpacing:'2px', textTransform:'uppercase', flexShrink:0 }}>{tr(t('discovery.partners'))}</span>
             <div className="discovery-partner-divider" style={{ width:1, height:20, background:'rgba(255,255,255,0.06)', flexShrink:0 }}/>
             <div className="discovery-partner-logos" style={{ display:'flex', alignItems:'center', gap:16, flexWrap:'wrap' }}>
               {featured.map(u => <LogoChip key={u.id} uni={u} size={46} />)}
@@ -381,7 +388,7 @@ export default function JourneyTimeline() {
               style={{ marginLeft:'auto', fontSize:12, fontWeight:600, color:'rgba(255,255,255,0.35)', textDecoration:'none', flexShrink:0, transition:'color 0.2s' }}
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color='#fff'; }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color='rgba(255,255,255,0.35)'; }}>
-              {t('discovery.viewAll')}
+              {tr(t('discovery.viewAll'))}
             </Link>
           </div>
         </div>

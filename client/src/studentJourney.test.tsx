@@ -9,6 +9,7 @@ import { PROGRAMS } from './data';
 import { curriculumFor, curriculumPreviews } from './programDetails';
 import { subjectGuide } from './studyFields';
 import { studyDuration } from './catalogPresentation';
+import { PreferencesProvider } from './i18n';
 
 afterEach(cleanup);
 describe('student application journey', () => {
@@ -52,7 +53,7 @@ describe('student application journey', () => {
     expect(result.current.uniA.id).not.toBe(result.current.uniB.id);
   });
   it('opens the form with context instead of an empty WhatsApp message', () => {
-    render(<MemoryRouter><AdvisorLink context={{ university: 'APU', program: 'A & B' }} /></MemoryRouter>);
+    render(<PreferencesProvider><MemoryRouter><AdvisorLink context={{ university: 'APU', program: 'A & B' }} /></MemoryRouter></PreferencesProvider>);
     const href = screen.getByRole('link').getAttribute('href')!;
     const url = new URL(href, 'https://example.test');
     expect(url.pathname).toBe('/apply');
@@ -60,7 +61,7 @@ describe('student application journey', () => {
     expect(url.searchParams.get('university')).toBe('APU');
   });
   it('prefills the request and offers one submit action without consultation shortcuts', () => {
-    render(<MemoryRouter initialEntries={['/apply?university=APU&program=Computing']}><ApplicationAssistance /></MemoryRouter>);
+    render(<PreferencesProvider><MemoryRouter initialEntries={['/apply?university=APU&program=Computing']}><ApplicationAssistance /></MemoryRouter></PreferencesProvider>);
     expect(screen.getByDisplayValue('APU')).toBeTruthy();
     expect(screen.getByDisplayValue('Computing')).toBeTruthy();
     expect(screen.getAllByRole('button')).toHaveLength(1);

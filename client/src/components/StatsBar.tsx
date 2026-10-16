@@ -1,3 +1,4 @@
+import { useCopy } from '../copy';
 import { memo } from 'react';
 import { useScrollReveal } from '../hooks/useScrollReveal';
 import { usePreferences } from '../i18n';
@@ -24,15 +25,16 @@ const stats = [
 ];
 
 const StatItem = memo(function StatItem({ val, label, icon, delay }: { val: string; label: string; icon: React.ReactNode; delay: number }) {
+  const { tr, language: copyLanguage } = useCopy();
   const ref = useScrollReveal({ delay, direction: 'up' });
   return (
     <div ref={ref} className="stat-item" style={{ display: 'flex', alignItems: 'center', gap: 18, padding: '0 32px', borderRight: '1px solid #F3F4F6' }}>
       <div className="stat-icon" style={{ width: 52, height: 52, borderRadius: 14, background: `${BRAND}10`, border: `1px solid ${BRAND}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-        {icon}
+        {tr(icon)}
       </div>
       <div>
-        <div className="stat-value" style={{ fontSize: 32, fontWeight: 900, color: '#111827', letterSpacing: '-1.5px', lineHeight: 1 }}>{val}</div>
-        <div className="stat-label" style={{ fontSize: 12, color: '#6B7280', fontWeight: 500, marginTop: 5, lineHeight: 1.4 }}>{label}</div>
+        <div className="stat-value" style={{ fontSize: 32, fontWeight: 900, color: '#111827', letterSpacing: '-1.5px', lineHeight: 1 }}>{tr(val)}</div>
+        <div className="stat-label" style={{ fontSize: 12, color: '#6B7280', fontWeight: 500, marginTop: 5, lineHeight: 1.4 }}>{tr(label)}</div>
       </div>
     </div>
   );

@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { apiUrl } from "./config";
 import { UNIVERSITIES, PROGRAMS, INSTITUTES } from "./data";
 import type { University, Program, Institute } from "./types";
+import { translateCopy } from './copy';
+import type { Language } from './i18n';
 
 export const levels: Record<string, string> = {
   certificate: 'شهادة',
@@ -62,7 +64,7 @@ export type Inquiry = { university?: string; program?: string; level?: string };
 // Resolved from the owner-supplied https://wa.me/message/SKH6EMIXDIDMG1 (Najmuni).
 export const BUSINESS_WHATSAPP_NUMBER = '601137327607';
 export type ApplicationInquiry = Inquiry & { name: string; phone: string; qualification?: string; preferredStart?: string };
-export function applicationMessage(context: ApplicationInquiry) {
+export function applicationMessage(context: ApplicationInquiry, language: Language = 'ar') {
   return [
     'مرحبًا فريق NajmUni، أرغب بالمساعدة في تقديم طلب قبولي.',
     `الاسم: ${context.name}`, `رقم التواصل: ${context.phone}`,
@@ -72,7 +74,7 @@ export function applicationMessage(context: ApplicationInquiry) {
     context.level && `الدرجة المطلوبة: ${levels[context.level] || context.level}`,
     context.preferredStart && `موعد البداية المفضل: ${context.preferredStart}`,
     'أرجو مراجعة خياراتي وتوضيح شروط القبول والرسوم والخطوات التالية. شكرًا لكم.',
-  ].filter(Boolean).join('\n');
+  ].filter(Boolean).map(line => translateCopy(line, language)).join('\n');
 }
 export function whatsappMessageUrl(message: string) {
   const number = String(import.meta.env.VITE_WHATSAPP_NUMBER || BUSINESS_WHATSAPP_NUMBER).replace(/[\s+()-]/g, '');

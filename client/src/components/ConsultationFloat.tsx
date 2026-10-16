@@ -1,3 +1,4 @@
+import { useCopy } from '../copy';
 import { useState } from 'react';
 import { apiUrl } from '../config';
 
@@ -9,6 +10,7 @@ const INPUT: React.CSSProperties = {
 };
 
 export default function ConsultationFloat() {
+  const { tr, language: copyLanguage } = useCopy();
   const [open, setOpen]       = useState(false);
   const [done, setDone]       = useState(false);
   const [sending, setSending] = useState(false);
@@ -49,10 +51,10 @@ export default function ConsultationFloat() {
 
   return (
     <>
-      <style>{`
+      <style>{tr(`
         @keyframes floatPanel { from{opacity:0;transform:translateY(14px) scale(0.97)} to{opacity:1;transform:none} }
         @keyframes pulseBtn   { 0%,100%{box-shadow:0 8px 32px rgba(79,107,255,0.28)} 50%{box-shadow:0 8px 44px rgba(79,107,255,0.42)} }
-      `}</style>
+      `)}</style>
 
       <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 200, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 12 }}>
 
@@ -104,11 +106,11 @@ export default function ConsultationFloat() {
                   value={form.notes} onChange={upd('notes')} onFocus={focusStyle} onBlur={blurStyle}
                   style={{ ...INPUT, height: 72, resize: 'none', paddingTop: 10 } as React.CSSProperties} />
 
-                {error && (
+                {tr(error && (
                   <div style={{ fontSize: 12, color: '#DC2626', background: '#FEF2F2', borderRadius: 8, padding: '8px 12px', border: '1px solid #FECACA' }}>
                     {error}
                   </div>
-                )}
+                ))}
 
                 <button onClick={submit} disabled={sending} style={{
                   background: sending ? '#9CA3AF' : 'linear-gradient(135deg, #4F6BFF, #4F6BFF)',
@@ -118,7 +120,7 @@ export default function ConsultationFloat() {
                   transition: 'all 0.2s',
                   boxShadow: sending ? 'none' : '0 4px 16px rgba(79,107,255,0.24)',
                 }}>
-                  {sending ? 'Sending…' : 'Book My Free Consultation'}
+                  {tr(sending ? 'Sending…' : 'Book My Free Consultation')}
                 </button>
 
                 <div style={{ fontSize: 11, color: '#9CA3AF', textAlign: 'center' }}>
@@ -148,7 +150,7 @@ export default function ConsultationFloat() {
             <line x1="8" y1="2" x2="8" y2="6"/>
             <line x1="3" y1="10" x2="21" y2="10"/>
           </svg>
-          {open ? 'Close' : 'Book Free Consultation'}
+          {tr(open ? 'Close' : 'Book Free Consultation')}
         </button>
       </div>
     </>

@@ -3,6 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const catalog = require('../src/partner_catalog.json');
 const base = process.env.PREVIEW_URL || 'http://127.0.0.1:5173';
+const apiBase = process.env.PREVIEW_API_URL || base;
 const shots = path.resolve(__dirname, '../../.run-logs/discovery-redesign');
 fs.mkdirSync(shots, { recursive: true });
 (async () => {
@@ -10,7 +11,7 @@ fs.mkdirSync(shots, { recursive: true });
  try {
   const page = await browser.newPage(); const errors=[];
   page.on('pageerror',error=>errors.push(error.message));
-  const programs = await (await page.request.get(base+'/api/programs')).json();
+  const programs = await (await page.request.get(apiBase+'/api/programs')).json();
   expect(programs.data.length).toBe(catalog.programs.length);
   await page.goto(base+'/explore?'+new URLSearchParams({ q:'Bachelor of Computer Science (Cyber Security) with Honours', shown:'100' }));
   await expect(page.locator('.study-program-card').first()).toBeVisible();

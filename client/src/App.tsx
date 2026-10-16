@@ -1,3 +1,4 @@
+import { useCopy } from './copy';
 import { Suspense, lazy, useEffect } from 'react';
 import { Navigate, Routes, Route, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
@@ -22,10 +23,11 @@ const CRM             = lazy(() => import('./crm/CRM'));
 const StudyPlan       = lazy(() => import('./features/study-plan/StudyPlanFeature'));
 
 function PageLoader() {
+  const { tr, language: copyLanguage } = useCopy();
   return (
     <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid #F3F5FF', borderTopColor: '#4F6BFF', animation: 'spin 0.7s linear infinite' }} />
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      <style>{tr(`@keyframes spin{to{transform:rotate(360deg)}}`)}</style>
     </div>
   );
 }
@@ -47,6 +49,7 @@ function RouteScroller() {
 }
 
 export default function App() {
+  const { tr, language: copyLanguage } = useCopy();
   const { pathname } = useLocation();
   const isAdmin = pathname === '/admin' || pathname === '/students' || pathname === '/student' || pathname === '/crm' || pathname.startsWith('/crm/');
 
@@ -60,8 +63,8 @@ export default function App() {
           <Route path="/explore" element={<Explorer />} />
           <Route path="/programs/:id" element={<ProgramDetail />} />
           <Route path="/apply" element={<ApplicationAssistance />} />
-          <Route path="/costs" element={<main className="student-page"><p>تقديرات تخطيطية بالرينجت الماليزي، وليست عرض سعر. راجع الرسوم الفعلية والتأمين والتأشيرة والودائع مع المستشار.</p><Costs /></main>} />
-          <Route path="/compare" element={<main className="student-page"><h1>قارن الجامعات</h1><p>مقارنة استرشادية من بيانات الدليل؛ النتيجة ليست حكمًا على أهليتك أو ضمانًا للقبول.</p><Comparison /></main>} />
+          <Route path="/costs" element={<main className="student-page"><p>{tr("تقديرات تخطيطية بالرينجت الماليزي، وليست عرض سعر. راجع الرسوم الفعلية والتأمين والتأشيرة والودائع مع المستشار.")}</p><Costs /></main>} />
+          <Route path="/compare" element={<main className="student-page"><h1>{tr("قارن الجامعات")}</h1><p>{tr("مقارنة استرشادية من بيانات الدليل؛ النتيجة ليست حكمًا على أهليتك أو ضمانًا للقبول.")}</p><Comparison /></main>} />
           <Route path="/consultation" element={<Navigate to="/apply" replace />} />
           <Route path="/visa" element={<VisaGuide />} />
           <Route path="/universities"     element={<Universities />} />

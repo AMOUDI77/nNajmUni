@@ -1,3 +1,4 @@
+import { useCopy } from '../../../copy';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import StudyPlanShell from '../layouts/StudyPlanShell';
@@ -17,6 +18,7 @@ const steps = [
 ] as const;
 
 export default function StudyPlanQuestionnaire() {
+  const { tr, language: copyLanguage } = useCopy();
   const [step, setStep] = useState(0);
   const [error, setError] = useState('');
   const { profile, updateProfile } = useStudyPlan();
@@ -44,15 +46,15 @@ export default function StudyPlanQuestionnaire() {
 
   return <StudyPlanShell compact>
     <section className="sp-wizard" aria-live="polite">
-      <div className="sp-progress-meta"><button type="button" onClick={() => step ? setStep(step - 1) : navigate('/study-plan')} aria-label="رجوع"><StudyPlanIcon name="arrow" /></button><span>الخطوة {step + 1} من {steps.length}</span></div>
+      <div className="sp-progress-meta"><button type="button" onClick={() => step ? setStep(step - 1) : navigate('/study-plan')} aria-label={tr("رجوع")}><StudyPlanIcon name="arrow" /></button><span>{tr("الخطوة")}{step + 1} {tr("من")}{steps.length}</span></div>
       <div className="sp-progress"><span style={{ width: `${((step + 1) / steps.length) * 100}%` }} /></div>
       <div className="sp-question" key={step}>
-        <span className="sp-kicker">خطتك الشخصية</span><h1>{current.title}</h1><p>{current.hint}</p>
-        {current.field === 'grade' ? <label className="sp-grade-label"><span>المعدل بالنسبة المئوية</span><div><input autoFocus type="number" inputMode="decimal" min="0" max="100" value={profile.grade ?? ''} onChange={e => updateProfile({ grade: e.target.value === '' ? null : Number(e.target.value) })} aria-describedby="grade-help" /><b>%</b></div><small id="grade-help">مثال: 76%</small></label> :
-          <div className="sp-options">{current.options.map(([id, label]) => { const selected = current.field === 'preferences' ? profile.preferences.includes(id) : value === id; return <button type="button" className={selected ? 'selected' : ''} aria-pressed={selected} key={id} onClick={() => choose(id)}><span>{label}</span><i>{selected && <StudyPlanIcon name="check" size={14}/>}</i></button>; })}</div>}
-        {current.field === 'english' && profile.english.type === 'ielts' && <label className="sp-inline-input"><span>درجة IELTS (اختياري)</span><input type="number" step="0.5" min="0" max="9" value={profile.english.score ?? ''} onChange={e => updateProfile({ english: { ...profile.english, score: e.target.value ? Number(e.target.value) : undefined } })} /></label>}
-        {error && <p className="sp-error-text" role="alert">{error}</p>}
-        <button type="button" className="sp-button sp-next" onClick={next}>{step === steps.length - 1 ? 'راجع بياناتي' : 'التالي'} <StudyPlanIcon name="arrow" /></button>
+        <span className="sp-kicker">{tr("خطتك الشخصية")}</span><h1>{tr(current.title)}</h1><p>{tr(current.hint)}</p>
+        {current.field === 'grade' ? <label className="sp-grade-label"><span>{tr("المعدل بالنسبة المئوية")}</span><div><input autoFocus type="number" inputMode="decimal" min="0" max="100" value={profile.grade ?? ''} onChange={e => updateProfile({ grade: e.target.value === '' ? null : Number(e.target.value) })} aria-describedby="grade-help" /><b>%</b></div><small id="grade-help">{tr("مثال: 76%")}</small></label> :
+          <div className="sp-options">{current.options.map(([id, label]) => { const selected = current.field === 'preferences' ? profile.preferences.includes(id) : value === id; return <button type="button" className={selected ? 'selected' : ''} aria-pressed={selected} key={id} onClick={() => choose(id)}><span>{tr(label)}</span><i>{selected && <StudyPlanIcon name="check" size={14}/>}</i></button>; })}</div>}
+        {current.field === 'english' && profile.english.type === 'ielts' && <label className="sp-inline-input"><span>{tr("درجة IELTS (اختياري)")}</span><input type="number" step="0.5" min="0" max="9" value={profile.english.score ?? ''} onChange={e => updateProfile({ english: { ...profile.english, score: e.target.value ? Number(e.target.value) : undefined } })} /></label>}
+        {tr(error && <p className="sp-error-text" role="alert">{error}</p>)}
+        <button type="button" className="sp-button sp-next" onClick={next}>{tr(step === steps.length - 1 ? 'راجع بياناتي' : 'التالي')} <StudyPlanIcon name="arrow" /></button>
       </div>
     </section>
   </StudyPlanShell>;

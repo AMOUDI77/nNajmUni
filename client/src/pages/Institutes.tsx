@@ -1,3 +1,4 @@
+import { useCopy } from '../copy';
 import { useState, useEffect, memo } from 'react';
 import AdvisorLink from '../components/AdvisorLink';
 import { api } from '../api';
@@ -23,13 +24,14 @@ const AR_DESCRIPTIONS: Record<string, string> = {
 };
 
 const InstituteLogo = memo(function InstituteLogo({ institute, size = 52 }: { institute: Institute; size?: number }) {
+  const { tr, language: copyLanguage } = useCopy();
   const [failed, setFailed] = useState(false);
   const officialLogo = OFFICIAL_LOGOS[institute.abbr];
 
   if (!institute.domain || failed) {
     return (
       <div style={{ width: size, height: size, borderRadius: 12, border: '1px solid #F0F0F0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: `${institute.color}12` }}>
-        <span style={{ fontSize: size * 0.35, fontWeight: 900, color: institute.color }}>{institute.abbr.slice(0, 2)}</span>
+        <span style={{ fontSize: size * 0.35, fontWeight: 900, color: institute.color }}>{tr(institute.abbr.slice(0, 2))}</span>
       </div>
     );
   }
@@ -74,6 +76,7 @@ function formatTuition(min: number, max: number) {
 }
 
 const InstituteCard = memo(function InstituteCard({ institute }: { institute: Institute }) {
+  const { tr, language: copyLanguage } = useCopy();
   const { t, language } = usePreferences();
   const typeLabel = useTypeLabel();
   const [hov, setHov] = useState(false);
@@ -99,22 +102,22 @@ const InstituteCard = memo(function InstituteCard({ institute }: { institute: In
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, gap: 16 }}>
           <InstituteLogo institute={institute} size={52} />
           <span style={{ fontSize: 10, fontWeight: 600, color: institute.color, background: `${institute.color}12`, borderRadius: 20, padding: '3px 10px', whiteSpace: 'nowrap' }}>
-            {typeLabel(institute.type)}
+            {tr(typeLabel(institute.type))}
           </span>
         </div>
 
-        <div style={{ fontSize: 16, fontWeight: 800, color: C.text, marginBottom: 4, lineHeight: 1.3 }}>{institute.name}</div>
-        <div style={{ fontSize: 12, color: C.textMuted, marginBottom: 12 }}>{institute.location}</div>
+        <div style={{ fontSize: 16, fontWeight: 800, color: C.text, marginBottom: 4, lineHeight: 1.3 }}>{tr(institute.name)}</div>
+        <div style={{ fontSize: 12, color: C.textMuted, marginBottom: 12 }}>{tr(institute.location)}</div>
         <p style={{ fontSize: 13, color: C.textMuted, lineHeight: 1.65, marginBottom: 16, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-          {description}
+          {tr(description)}
         </p>
 
         <div className="uni-card-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: `1px solid ${C.border}`, paddingTop: 14, gap: 14 }}>
           <div>
-            <div style={{ fontSize: 11, color: C.textMuted, marginBottom: 2 }}>{t('institutes.tuition')}</div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{formatTuition(institute.tuition_min, institute.tuition_max)}</div>
-            <p style={{fontSize:12}}>الرسوم والمدة ومواعيد البداية تحتاج تأكيدًا.</p>
-            <AdvisorLink context={{university:institute.name, program:'دراسة اللغة'}}>استفسر عن المعهد</AdvisorLink>
+            <div style={{ fontSize: 11, color: C.textMuted, marginBottom: 2 }}>{tr(t('institutes.tuition'))}</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{tr(formatTuition(institute.tuition_min, institute.tuition_max))}</div>
+            <p style={{fontSize:12}}>{tr("الرسوم والمدة ومواعيد البداية تحتاج تأكيدًا.")}</p>
+            <AdvisorLink context={{university:institute.name, program:'دراسة اللغة'}}>{tr("استفسر عن المعهد")}</AdvisorLink>
           </div>
         </div>
       </div>
@@ -123,6 +126,7 @@ const InstituteCard = memo(function InstituteCard({ institute }: { institute: In
 });
 
 export default function Institutes() {
+  const { tr, language: copyLanguage } = useCopy();
   const { t } = usePreferences();
   const typeLabel = useTypeLabel();
   const [institutes, setInstitutes] = useState<Institute[]>([]);
@@ -146,9 +150,9 @@ export default function Institutes() {
     <div className="universities-page" style={{ paddingTop: 68, background: C.bg, minHeight: '100vh' }}>
       <div style={{ background: 'linear-gradient(135deg, #062A3A, #4F6BFF)', padding: 'clamp(40px,6vw,60px) clamp(20px,5vw,40px) clamp(50px,7vw,80px)' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', textAlign: 'center' }}>
-          <h1 style={{ fontSize: 'clamp(32px,5vw,56px)', fontWeight: 900, color: '#fff', letterSpacing: '-1px', marginBottom: 16 }}>{t('institutes.title')}</h1>
+          <h1 style={{ fontSize: 'clamp(32px,5vw,56px)', fontWeight: 900, color: '#fff', letterSpacing: '-1px', marginBottom: 16 }}>{tr(t('institutes.title'))}</h1>
           <p style={{ fontSize: 17, color: 'rgba(255,255,255,0.78)', maxWidth: 590, margin: '0 auto', lineHeight: 1.7 }}>
-            {t('institutes.copy')}
+            {tr(t('institutes.copy'))}
           </p>
         </div>
       </div>
@@ -181,7 +185,7 @@ export default function Institutes() {
                   transition: 'all 0.2s',
                 }}
               >
-                {typeLabel(type)}
+                {tr(typeLabel(type))}
               </button>
             ))}
           </div>
@@ -190,9 +194,9 @@ export default function Institutes() {
 
       <div style={{ maxWidth: 1200, margin: '0 auto', padding: 'clamp(24px,4vw,40px) clamp(16px,4vw,40px) 80px' }}>
         {loading ? (
-          <div style={{ textAlign: 'center', padding: 80, color: C.textMuted }}>{t('institutes.loading')}</div>
+          <div style={{ textAlign: 'center', padding: 80, color: C.textMuted }}>{tr(t('institutes.loading'))}</div>
         ) : institutes.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 80, color: C.textMuted }}>{t('institutes.empty')}</div>
+          <div style={{ textAlign: 'center', padding: 80, color: C.textMuted }}>{tr(t('institutes.empty'))}</div>
         ) : (
           <div className="uni-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 24 }}>
             {institutes.map(institute => <InstituteCard key={institute.id} institute={institute} />)}

@@ -1,7 +1,9 @@
+import { useCopy } from '../copy';
 import { Link } from 'react-router-dom';
 import WhatsAppIcon from './WhatsAppIcon';
 
 export default function Hero() {
+  const { tr, language: copyLanguage } = useCopy();
   return (
     <section className="hero-section" style={{
       maxWidth: 1440,
@@ -58,23 +60,21 @@ export default function Hero() {
             fontWeight: 900,
             marginBottom: 22,
           }}>
-            ابدأ رحلتك{' '}
+            {tr("ابدأ رحلتك")}{tr(' ')}
             <span style={{
               display: 'inline-block',
               background: 'linear-gradient(135deg, #4F8CFF 0%, #7B61FF 100%)',
               WebkitBackgroundClip: 'text',
               color: 'transparent',
-            }}>الدراسية</span>
-            <br />في ماليزيا
-          </h1>
+            }}>{tr("الدراسية")}</span>
+            <br />{tr("في ماليزيا")}</h1>
 
           <p className="hero-copy" style={{ fontSize: 18, lineHeight: 1.72, color: 'rgba(255,255,255,0.74)', maxWidth: 600, marginBottom: 30 }}>
-            نساعدك تختار الجامعة أو المعهد والتخصص المناسب، ونسهّل عليك إجراءات القبول.
-          </p>
+            {tr("نساعدك تختار الجامعة أو المعهد والتخصص المناسب، ونسهّل عليك إجراءات القبول.")}</p>
 
           <div className="hero-entry-actions">
-            <Link className="student-button" to="/explore">شوف الجامعات واختر تخصصك</Link>
-            <Link className="student-button secondary" to="/apply"><WhatsAppIcon />يلا ابدأ قبولك</Link>
+            <Link className="student-button" to="/explore">{tr("شوف الجامعات واختر تخصصك")}</Link>
+            <Link className="student-button secondary" to="/apply"><WhatsAppIcon />{tr("يلا ابدأ قبولك")}</Link>
           </div>
         </div>
         <img className="hero-mascot" src="/najmuni-mascot.png" alt="" width="1280" height="1280" />
