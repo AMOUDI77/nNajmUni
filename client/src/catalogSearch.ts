@@ -94,6 +94,31 @@ const subjectAliases: [string, string[]][] = [
 ];
 
 const normalizedCache = new Map<string, string>();
+/** Degree wording differs across universities; keep the subject and any specialism. */
+export function programSearchIntent(query: string) {
+  let text = searchNormalize(query).replace(/\bcyber security\b/g, 'cybersecurity');
+  const level = /\b(bachelor|bsc|beng|ba)\b/.test(text) ? 'bachelor'
+    : /\b(master|masters|msc|mba)\b/.test(text) ? 'master'
+    : /\b(phd|doctor of philosophy)\b/.test(text) ? 'phd'
+    : /\bdiploma\b/.test(text) ? 'diploma' : undefined;
+  if (level) {
+    text = text.replace(/\b(doctor of philosophy|bachelor|masters?|bsc|beng|msc|mba|phd|ba|diploma|honours|honors|hons|of|in|with|a|specialism|specialisation|specialization|majoring)\b/g, ' ');
+    if (/cybersecurity|software engineering|artificial intelligence|data science|data analytics|game development/.test(text)) {
+      text = text.replace(/\b(computer science|information technology|computing)\b/g, ' ');
+    }
+    text = text.replace(/\s+/g, ' ').trim().replace(/^(science|arts)\b\s*/, '').trim();
+  }
+  return { text: text || searchNormalize(query), level };
+}
+
+export function programSearchScore(query: string, program: { name: string; field: string; level: string }, institutionNames: string[] = []) {
+  const intent = programSearchIntent(query);
+  if (intent.level && intent.level !== program.level) return 0;
+  const names = [...programSearchNames(program.name, program.field), ...institutionNames];
+  const subjectScore = searchScore(intent.text, names.map(name => searchNormalize(name).replace(/\bcyber security\b/g, 'cybersecurity')));
+  if (!subjectScore) return 0;
+  return subjectScore + (searchNormalize(query) === searchNormalize(program.name) ? 1000 : 0);
+}
 export function searchNormalize(value: string) {
   const cached = normalizedCache.get(value);
   if (cached !== undefined) return cached;

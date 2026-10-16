@@ -1,9 +1,9 @@
-import { useState, useCallback } from 'react';
+import { useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { UNIVERSITIES } from '../data';
 import { scoreUniversity, type ComparisonScore } from '../services/universityService';
 import type { University } from '../types';
 
-const PRIVATE_UNIS = UNIVERSITIES.filter(u => u.type !== 'public');
 
 export interface ComparisonState {
   uniA: University;
@@ -16,14 +16,26 @@ export interface ComparisonState {
 }
 
 export function useComparison(): ComparisonState {
-  const [aId, setAId] = useState(PRIVATE_UNIS[0]?.id ?? 0);
-  const [bId, setBId] = useState(PRIVATE_UNIS[2]?.id ?? 0);
-
-  const uniA = UNIVERSITIES.find(u => u.id === aId) ?? PRIVATE_UNIS[0];
-  const uniB = UNIVERSITIES.find(u => u.id === bId) ?? PRIVATE_UNIS[2];
-
-  const setUniA = useCallback((id: number) => setAId(id), []);
-  const setUniB = useCallback((id: number) => setBId(id), []);
+  const [params, setParams] = useSearchParams();
+  const uniA = UNIVERSITIES.find(u => u.id === Number(params.get('university'))) ?? UNIVERSITIES[0];
+  const uniB = UNIVERSITIES.find(u => u.id === Number(params.get('with')) && u.id !== uniA.id)
+    ?? UNIVERSITIES.find(u => u.id !== uniA.id)!;
+  const setUniA = useCallback((id: number) => {
+    setParams(current => {
+      const next = new URLSearchParams(current);
+      next.set('university', String(id));
+      if (id === uniB.id) next.set('with', String(uniA.id));
+      return next;
+    }, { replace: true });
+  }, [setParams, uniA.id, uniB.id]);
+  const setUniB = useCallback((id: number) => {
+    setParams(current => {
+      const next = new URLSearchParams(current);
+      next.set('with', String(id));
+      if (id === uniA.id) next.set('university', String(uniB.id));
+      return next;
+    }, { replace: true });
+  }, [setParams, uniA.id, uniB.id]);
 
   return {
     uniA,
@@ -32,6 +44,6 @@ export function useComparison(): ComparisonState {
     scoreB: scoreUniversity(uniB),
     setUniA,
     setUniB,
-    privateUnis: PRIVATE_UNIS,
+    privateUnis: UNIVERSITIES,
   };
 }

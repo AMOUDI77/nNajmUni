@@ -256,7 +256,7 @@ const ar: Record<keyof typeof en, string> = {
   'nav.accommodation': 'السكن',
   'nav.visa': 'دليل الفيزا',
   'nav.contact': 'تواصل معنا',
-  'nav.apply': 'قدّم الآن',
+  'nav.apply': 'يلا ابدأ قبولك',
   'nav.openMenu': 'فتح القائمة',
   'nav.closeMenu': 'إغلاق القائمة',
   'nav.language': 'English',

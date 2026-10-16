@@ -66,7 +66,7 @@ export default function CatalogSearchInput({
           autoComplete="off"
           spellCheck={false}
           value={value}
-          placeholder="اكتب: تايلور، صنواي، APU…"
+          placeholder="مثلًا: هندسة البرمجيات، محاسبة، APU…"
           onFocus={() => setOpen(true)}
           onChange={(e) => {
             onChange(e.target.value);

@@ -1,0 +1,64 @@
+const { chromium, expect } = require('@playwright/test');
+const fs = require('node:fs');
+const path = require('node:path');
+const catalog = require('../src/partner_catalog.json');
+const base = process.env.PREVIEW_URL || 'http://127.0.0.1:5173';
+const shots = path.resolve(__dirname, '../../.run-logs/discovery-redesign');
+fs.mkdirSync(shots, { recursive: true });
+(async () => {
+ const browser = await chromium.launch({ channel:'msedge', headless:true });
+ try {
+  const page = await browser.newPage(); const errors=[];
+  page.on('pageerror',error=>errors.push(error.message));
+  const programs = await (await page.request.get(base+'/api/programs')).json();
+  expect(programs.data.length).toBe(catalog.programs.length);
+  await page.goto(base+'/explore?'+new URLSearchParams({ q:'Bachelor of Computer Science (Cyber Security) with Honours', shown:'100' }));
+  await expect(page.locator('.study-program-card').first()).toBeVisible();
+  const matchingUniversities = new Set(await page.locator('.study-program-card .institution-name strong').allTextContents());
+  expect(matchingUniversities.size).toBeGreaterThan(2);
+  console.log(`Full cybersecurity title: ${await page.locator('.study-program-card').count()} programmes across ${matchingUniversities.size} universities.`);
+  for(const width of [1440,768,390,320]) {
+   await page.setViewportSize({width,height:1000});
+   await page.goto(base+'/explore');
+   await expect(page.locator('.study-program-card')).toHaveCount(12);
+   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+   await page.screenshot({path:path.join(shots,`explore-${width}.png`),fullPage:true});
+   await page.getByRole('button',{name:/الحاسب والتقنية.*برنامج/}).click();
+   await page.getByRole('button',{name:'هندسة البرمجيات',exact:true}).click();
+   if (width < 768) await page.locator('.discovery-sidebar summary').click();
+   await page.getByRole('combobox',{name:'الجامعة',exact:true}).selectOption('10');
+   await page.getByRole('combobox',{name:'المرحلة الدراسية',exact:true}).selectOption('bachelor');
+   await expect(page.locator('.study-program-card').first()).toContainText('Software Engineering');
+   await expect(page.locator('.study-program-card').first()).toContainText('APU');
+   await page.reload();
+   if (width < 768) await page.locator('.discovery-sidebar summary').click();
+   await expect(page.getByRole('combobox',{name:'الجامعة',exact:true})).toHaveValue('10');
+   await page.getByRole('link',{name:'اكتشف التخصص',exact:false}).first().click();
+   await expect(page.locator('.program-subjects li')).toHaveCount(4);
+   await expect(page.locator('.program-careers')).toBeVisible();
+   expect(await page.locator('main a[href^="https:"]').count()).toBe(0);
+   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+   await page.screenshot({path:path.join(shots,`program-${width}.png`),fullPage:true});
+   await page.locator('.program-back').click();
+   if (width < 768) await page.locator('.discovery-sidebar summary').click();
+   await expect(page.getByRole('combobox',{name:'الجامعة',exact:true})).toHaveValue('10');
+   await page.goto(base+'/universities/10?level=bachelor');
+   await expect(page.locator('.university-profile-facts')).toContainText('112');
+   await page.getByRole('button',{name:/الحاسب والتقنية/}).click();
+   await page.locator('#university-program-query').fill('هندسة البرمجيات');
+   await page.getByRole('link',{name:'اكتشف التخصص',exact:false}).first().click();
+   await page.locator('.program-back').click();
+   await expect(page.locator('#university-program-query')).toHaveValue('هندسة البرمجيات');
+   await page.goto(base+'/explore?category=universities&shown=24');
+   await expect(page.locator('.study-university-card')).toHaveCount(22);
+   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+   await page.screenshot({path:path.join(shots,`universities-${width}.png`),fullPage:true});
+  }
+  await page.goto(base+'/programs/243484946');
+  await page.locator('.program-next-step a').click();
+  await expect(page.locator('[name=program]')).toHaveValue(/Software Engineering/);
+  await expect(page.locator('[name=university]')).toHaveValue(/Asia Pacific/);
+  expect(errors).toEqual([]);
+  console.log('PASS: full catalog, fields and subjects, filters and reload, details and application context, university return, no external links, no overflow at 1440/768/390/320, no runtime errors.');
+ } finally { await browser.close(); }
+})().catch(error=>{console.error(error);process.exitCode=1;});

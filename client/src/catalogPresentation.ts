@@ -1,4 +1,6 @@
 export const fieldLabels: Record<string, string> = {
+  Technology: 'الحاسب وتقنية المعلومات', Engineering: 'الهندسة', Medicine: 'الطب والعلوم الصحية',
+  Business: 'الأعمال والإدارة', Law: 'القانون', Arts: 'الفنون', Design: 'التصميم',
   'Computer Science & IT': 'الحاسب وتقنية المعلومات',
   'Business & Management': 'الأعمال والإدارة',
   'Engineering & Applied Sciences': 'الهندسة والعلوم التطبيقية',
@@ -14,6 +16,7 @@ export const fieldLabels: Record<string, string> = {
 };
 export function studyDuration(years: number | null) {
   if (!years) return 'تحتاج تأكيدًا';
+  if (years === 0.5) return '6 أشهر';
   if (years === 1) return 'سنة واحدة';
   if (years === 1.5) return 'سنة ونصف';
   if (years === 2) return 'سنتان';

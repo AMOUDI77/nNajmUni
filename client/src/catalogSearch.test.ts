@@ -3,8 +3,10 @@ import {
   institutionSearchNames,
   programSearchNames,
   searchScore,
+  programSearchScore,
+  programSearchIntent,
 } from "./catalogSearch";
-import { UNIVERSITIES } from "./data";
+import { UNIVERSITIES, PROGRAMS } from "./data";
 const find = (q: string) =>
   UNIVERSITIES.map((u) => ({
     ...u,
@@ -13,6 +15,24 @@ const find = (q: string) =>
     .filter((u) => u.score > 0)
     .sort((a, b) => b.score - a.score);
 describe("live bilingual university search", () => {
+  it('finds cybersecurity across university naming variants for the full title in the reported search', () => {
+    const query = 'Bachelor of Computer Science (Cyber Security) with Honours';
+    const results = PROGRAMS.filter(p => programSearchScore(query, p) > 0);
+    expect(new Set(results.map(p => p.university_id)).size).toBeGreaterThan(2);
+    expect(results.every(p => p.level === 'bachelor')).toBe(true);
+    expect(results.every(p => /cyber.?security/i.test(p.name))).toBe(true);
+    expect(results.some(p => p.university_abbr === 'APU')).toBe(true);
+    expect(results.some(p => p.university_abbr === 'MMU')).toBe(true);
+  });
+  it('preserves specialisms, degree and institution constraints while removing title boilerplate', () => {
+    const program = { name: 'Bachelor of Computer Science (Hons) Cybersecurity', field: 'Computer Science & IT', level: 'bachelor' };
+    expect(programSearchScore('Cyber Security', program)).toBeGreaterThan(0);
+    expect(programSearchScore('Master of Cybersecurity', program)).toBe(0);
+    expect(programSearchScore('Bachelor of Cybersecurity Digital Forensics', program)).toBe(0);
+    expect(programSearchScore('APU Bachelor of Cybersecurity', program, ['MMU'])).toBe(0);
+    expect(programSearchIntent('Bachelor of Science (Honours) in Data Science').text).toBe('data science');
+    expect(programSearchIntent('Bachelor of Computer Science (Cyber Security) with Honours').text).toBe('cybersecurity');
+  });
   it.each([
     "تا",
     "تايلور",

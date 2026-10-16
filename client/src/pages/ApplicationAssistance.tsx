@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { api } from "../api";
-import { track, whatsappUrl, applicationMessage, whatsappMessageUrl } from "../discovery";
-import AdvisorLink from "../components/AdvisorLink";
+import { track, applicationMessage, whatsappMessageUrl } from "../discovery";
+import WhatsAppIcon from "../components/WhatsAppIcon";
 export default function ApplicationAssistance() {
   const [params] = useSearchParams();
-  const advisor = params.get("intent") === "consultation";
+
   const [busy, setBusy] = useState(false),
     [done, setDone] = useState(false),
     [error, setError] = useState("");
@@ -14,14 +14,14 @@ export default function ApplicationAssistance() {
   const [message, setMessage] = useState('');
   useEffect(() => {
     track(
-      advisor ? "consultation_requested" : "application_assistance_started",
+      "application_assistance_started",
     );
-  }, [advisor]);
+  }, []);
   return (
     <main className="student-page student-form-page" dir="rtl">
       <header>
         <p className="student-eyebrow">خطوة أولى بسيطة</p>
-        <h1>{advisor ? "اطلب تواصل مستشار" : "يلا ابدأ قبولك"}</h1>
+        <h1>يلا ابدأ قبولك</h1>
         <p>
           أرسل بيانات التواصل وما تعرفه عن خطتك. يراجعها مستشار معك قبل أي تقديم
           رسمي أو طلب مستندات.
@@ -75,7 +75,7 @@ export default function ApplicationAssistance() {
                 specialization: String(data.get("program")),
                 study_level: params.get("level") || "",
                 preferred_start: String(data.get("start")),
-                source: advisor ? "advisor-request" : "application-assistance",
+                source: "application-assistance",
               });
               if (!result.ok) throw new Error();
               setDone(true);
@@ -157,19 +157,11 @@ export default function ApplicationAssistance() {
             </p>
           )}
           <button disabled={busy} className="student-button">
-            {busy ? "جارٍ تجهيز طلبك…" : "أرسل طلبك عبر واتساب"}
+            <WhatsAppIcon />{busy ? "جارٍ تجهيز طلبك…" : "أرسل طلبك عبر واتساب"}
           </button>
         </form>
       )}
-      <p>
-        تفضل حجز موعد؟ <a href="/consultation">احجز استشارة</a>
-      </p>
-      {whatsappUrl() && <AdvisorLink
-        context={{
-          university: params.get("university") || undefined,
-          program: params.get("program") || undefined,
-        }}
-      />}
+
     </main>
   );
 }

@@ -1,12 +1,13 @@
 import { Link } from 'react-router-dom';
 import Logo from './Logo';
+import { UNIVERSITIES } from '../data';
 import { C } from '../styles/theme';
 import { usePreferences, type TranslationKey } from '../i18n';
 
 const cols: Array<{ titleKey: TranslationKey; links: Array<[TranslationKey | string, string]> }> = [
-  { titleKey: 'footer.services', links: [['footer.admissions', '/#services'], ['footer.visa', '/#faq'], ['footer.accommodation', '/#services'], ['footer.scholarships', '/#services']] },
-  { titleKey: 'footer.universities', links: [['UM', '/universities'], ['USM', '/universities'], ['APU', '/universities'], ['MMU', '/universities'], ['UTAR', '/universities']] },
-  { titleKey: 'footer.company', links: [['footer.about', '/#services'], ['footer.contact', '/consultation'], ['footer.privacy', '/#faq'], ['footer.terms', '/#faq']] },
+  { titleKey: 'footer.services', links: [['footer.admissions', '/apply'], ['footer.visa', '/visa'], ['خطتك الدراسية', '/study-plan'], ['حاسبة الميزانية', '/costs']] },
+  { titleKey: 'footer.universities', links: UNIVERSITIES.slice(0, 5).map(u => [u.abbr, `/universities/${u.id}`] as [string, string]) },
+  { titleKey: 'footer.company', links: [['اكتشف الجامعات', '/explore'], ['مقارنة الجامعات', '/compare'], ['خدماتنا', '/#services'], ['الأسئلة الشائعة', '/#faq']] },
 ];
 
 export default function Footer() {
@@ -25,7 +26,7 @@ export default function Footer() {
               {t('footer.copy')}
             </p>
             <div style={{display:'flex',flexWrap:'wrap',gap:16,marginTop:18}}>
-              <Link to="/explore">اكتشف التخصصات</Link>
+              <Link to="/study-plan">خطتك الدراسية</Link>
               <Link to="/costs">حاسبة الميزانية</Link>
               <Link to="/compare">مقارنة الجامعات</Link>
             </div>

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import AdvisorLink from './AdvisorLink';
+import WhatsAppIcon from './WhatsAppIcon';
 
 export default function Hero() {
   return (
@@ -74,9 +74,8 @@ export default function Hero() {
 
           <div className="hero-entry-actions">
             <Link className="student-button" to="/explore">شوف الجامعات واختر تخصصك</Link>
-            <Link className="student-button secondary" to="/apply">يلا ابدأ قبولك</Link>
+            <Link className="student-button secondary" to="/apply"><WhatsAppIcon />يلا ابدأ قبولك</Link>
           </div>
-          <AdvisorLink className="student-button hero-advisor" />
         </div>
         <img className="hero-mascot" src="/najmuni-mascot.png" alt="" width="1280" height="1280" />
       </div>

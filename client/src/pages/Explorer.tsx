@@ -1,453 +1,82 @@
-import { useEffect } from "react";
-import { Link, useSearchParams } from "react-router-dom";
-import { levels, track, useCatalog } from "../discovery";
-import AdvisorLink from "../components/AdvisorLink";
-import InstitutionIdentity from "../components/InstitutionIdentity";
-import { fieldLabels, studyDuration } from '../catalogPresentation';
-import CatalogSearchInput from "../components/CatalogSearchInput";
-import {
-  institutionSearchNames,
-  programSearchNames,
-  searchScore,
-} from "../catalogSearch";
+import { useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { levels, useCatalog } from '../discovery';
+import { studyFields } from '../studyFields';
+import { institutionSearchNames, programSearchIntent, programSearchScore, searchScore } from '../catalogSearch';
+import { ProgramCard, UniversityCard } from '../components/StudyCards';
+import InstitutionIdentity from '../components/InstitutionIdentity';
+import AdvisorLink from '../components/AdvisorLink';
+import CatalogSearchInput from '../components/CatalogSearchInput';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 export default function Explorer() {
   const catalog = useCatalog();
+  const isMobile = useIsMobile();
   const [params, setParams] = useSearchParams();
-  const q = params.get("q") || "",
-    category = params.get("category") || "programs",
-    level = params.get("level") || "",
-    location = params.get("location") || "",
-    university = params.get("university") || "",
-    field = params.get('field') || '',
-    sort = params.get('sort') || '';
-  const shown = Math.max(12, Math.min(10000, Number(params.get("shown")) || 12));
-  const update = (key: string, value: string) =>
-    setParams(
-      (old) => {
-        const next = new URLSearchParams(old);
-        next.delete("shown");
-        value ? next.set(key, value) : next.delete(key);
-        return next;
-      },
-      { replace: true },
-    );
-  useEffect(() => {
-    track("explorer_opened");
-  }, []);
-  const programs = catalog.programs
-    .map((p) => ({
-      ...p,
-      university: catalog.universities.find((u) => u.id === p.university_id),
-    }))
-    .map((p) => ({
-      ...p,
-      score: searchScore(q, [
-        ...programSearchNames(p.name, p.field),
-        ...institutionSearchNames(
-          p.university?.name || "",
-          p.university?.abbr || "",
-        ),
-      ]),
-    }))
-    .filter(
-      (p) =>
-        p.score > 0 &&
-        (!level || level === p.level) &&
-        (!field || field === p.field) &&
-        (!location || p.university?.location === location) &&
-        (!university || String(p.university_id) === university),
-    )
-    .sort((a, b) => {
-      if (sort === 'fee') return (a.tuition_per_year ?? Infinity) - (b.tuition_per_year ?? Infinity) || a.name.localeCompare(b.name);
-      const order = ['bachelor', 'master', 'foundation', 'diploma', 'phd', 'certificate', 'postgraduate_diploma', 'other'];
-      return b.score - a.score || order.indexOf(a.level) - order.indexOf(b.level) || a.name.localeCompare(b.name);
-    });
-  const universities = catalog.universities
-    .map((u) => ({
-      ...u,
-      score: searchScore(q, institutionSearchNames(u.name, u.abbr)),
-    }))
-    .filter((u) => u.score > 0 && (!location || u.location === location))
-    .sort((a, b) => b.score - a.score);
-  const institutes = catalog.institutes
-    .map((i) => ({
-      ...i,
-      score: searchScore(q, [
-        ...institutionSearchNames(i.name, i.abbr),
-        "معهد لغة",
-        "لغة انجليزية",
-        "language",
-        "english",
-      ]),
-    }))
-    .filter((i) => i.score > 0 && (!location || i.location === location))
-    .sort((a, b) => b.score - a.score);
-  const suggestions = [
-    ...catalog.universities.map((u) => ({
-      key: `u-${u.id}`,
-      name: u.name,
-      caption: `جامعة · ${u.abbr}`,
-      category: "universities",
-      query: u.abbr,
-      score: searchScore(q, institutionSearchNames(u.name, u.abbr)),
-    })),
-    ...catalog.institutes.map((i) => ({
-      key: `i-${i.id}`,
-      name: i.name,
-      caption: `معهد لغة · ${i.abbr}`,
-      category: "institutes",
-      query: i.abbr,
-      score: searchScore(q, [
-        ...institutionSearchNames(i.name, i.abbr),
-        "معهد لغة",
-      ]),
-    })),
-    ...catalog.programs.map((p) => ({
-      key: `p-${p.id}`,
-      name: p.name,
-      caption: `تخصص · ${catalog.universities.find((u) => u.id === p.university_id)?.abbr || ""}`,
-      category: "programs",
-      query: p.name,
-      score: searchScore(q, programSearchNames(p.name, p.field)),
-    })),
-  ]
-    .filter((item) => item.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .filter(
-      (item, index, all) =>
-        all.findIndex(
-          (other) =>
-            other.category === item.category && other.query === item.query,
-        ) === index,
-    )
-    .slice(0, 6);
-  const count =
-    category === "universities"
-      ? universities.length
-      : category === "institutes"
-        ? institutes.length
-        : programs.length;
-  const locations = [
-    ...new Set(
-      (category === "institutes"
-        ? catalog.institutes
-        : catalog.universities
-      ).map((x) => x.location),
-    ),
-  ].sort();
-  return (
-    <main className="student-page explorer-page" dir="rtl">
-      <header>
-        <p className="student-eyebrow">اكتشف خيارات الدراسة في ماليزيا</p>
-        <h1>ابحث عن تخصصك أو جامعتك</h1>
-        <p>
-          تصفح الجامعات والمعاهد والتخصصات، واقرأ التفاصيل ثم ناقش خياراتك مع
-          مستشار.
-        </p>
-      </header>
-      <form
-        className="student-search"
-        onSubmit={(e) => {
-          e.preventDefault();
-          track("search_performed", { category, result_count: count });
-          document.getElementById("explorer-results")?.focus();
-        }}
-      >
-        <label htmlFor="explorer-query">التخصص أو الجامعة أو المعهد</label>
-        <div className="student-actions">
-          <CatalogSearchInput
-            value={q}
-            onChange={(value) => update("q", value)}
-            suggestions={suggestions}
-            onSelect={(item) => {
-              setParams(
-                { q: item.query, category: item.category },
-                { replace: true },
-              );
-            }}
-          />
-          <button className="student-button">بحث</button>
-        </div>
-        <div
-          className="student-actions explorer-categories"
-          aria-label="نوع النتائج"
-        >
-          {[
-            ["programs", "تخصصات"],
-            ["universities", "جامعات"],
-            ["institutes", "معاهد لغة"],
-          ].map(([value, label]) => (
-            <button
-              type="button"
-              key={value}
-              className="student-button secondary"
-              aria-pressed={category === value}
-              onClick={() => {
-                setParams(
-                  (old) => {
-                    const next = new URLSearchParams(old);
-                    next.set("category", value);
-                    next.delete("location");
-                    return next;
-                  },
-                  { replace: true },
-                );
-              }}
-            >
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                aria-hidden="true"
-              >
-                {value === "programs" ? (
-                  <>
-                    <path d="m2 9 10-5 10 5-10 5-10-5Z" />
-                    <path d="M6 11v6c4 3 8 3 12 0v-6M22 9v8" />
-                  </>
-                ) : value === "universities" ? (
-                  <>
-                    <path d="m3 9 9-6 9 6H3ZM3 21h18M5 10v8m7-8v8m7-8v8" />
-                  </>
-                ) : (
-                  <>
-                    <circle cx="12" cy="12" r="9" />
-                    <path d="M3 12h18M12 3c-5 5-5 13 0 18 5-5 5-13 0-18Z" />
-                  </>
-                )}
-              </svg>
-              {label}
-            </button>
-          ))}
-        </div>
-        <div className="student-filters">
-          {category === 'programs' && <>
-            <label>الجامعة<select value={university} onChange={e => update('university', e.target.value)}>
-              <option value="">كل الجامعات المتعاونة ({catalog.universities.length})</option>
-              {[...catalog.universities].sort((a,b) => a.name.localeCompare(b.name)).map(u => <option key={u.id} value={u.id}>{u.abbr} · {u.name}</option>)}
-            </select></label>
-            <label>المجال الدراسي<select value={field} onChange={e => update('field', e.target.value)}>
-              <option value="">كل المجالات</option>
-              {[...new Set(catalog.programs.filter(p => !university || String(p.university_id) === university).map(p => p.field))].sort().map(f => <option key={f} value={f}>{fieldLabels[f] || f}</option>)}
-            </select></label>
-          </>}
-          {category === "programs" && (
-            <label>
-              المرحلة الدراسية
-              <select
-                value={level}
-                onChange={(e) => update("level", e.target.value)}
-              >
-                <option value="">كل المراحل</option>
-                {Object.entries(levels).map(([k, v]) => (
-                  <option key={k} value={k}>
-                    {v}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-          <label>
-            الموقع
-            <select
-              value={location}
-              onChange={(e) => update("location", e.target.value)}
-            >
-              <option value="">كل المواقع</option>
-              {locations.map((x) => (
-                <option key={x}>{x}</option>
-              ))}
-            </select>
-          </label>
-          {university && (
-            <button
-              type="button"
-              className="student-button secondary"
-              onClick={() => update("university", "")}
-            >
-              إلغاء تحديد الجامعة
-            </button>
-          )}
-          {category === 'programs' && <label>ترتيب النتائج<select value={sort} onChange={e => update('sort', e.target.value)}>
-            <option value="">الأقرب للبحث</option><option value="fee">الرسوم السنوية: الأقل أولًا</option>
-          </select></label>}
-          {(q || level || field || university || location || sort) && <button type="button" className="student-button secondary" onClick={() => setParams({category})}>مسح كل الفلاتر</button>}
-        </div>
-      </form>
-      {catalog.offline && (
-        <p role="status" className="student-notice">
-          تعذر تحديث الدليل؛ نعرض نسخة الموقع المحفوظة. التفاصيل تحتاج تأكيدًا.{" "}
-          <button onClick={catalog.retry}>إعادة المحاولة</button>
-        </p>
-      )}
-      <section id="explorer-results" tabIndex={-1} aria-busy={catalog.loading}>
-        <h2 className="explorer-result-heading" aria-live="polite">
-          {catalog.loading ? "جارٍ تحميل الخيارات…" : `${count} نتيجة`}
-        </h2>
-        {!catalog.loading && count === 0 && (
-          <div className="student-card">
-            <h3>لم نجد نتائج مطابقة</h3>
-            <p>جرّب اسم الجامعة أو التخصص بالعربية أو الإنجليزية، أو خفّف الفلاتر. عدم ظهوره هنا لا يعني أنه غير متاح؛ اسألنا لنراجعه مع الجامعة.</p>
-            <button
-              className="student-button secondary"
-              onClick={() => setParams({ category })}
-            >
-              مسح البحث والفلاتر
-            </button>
-            <AdvisorLink />
-          </div>
-        )}
-        <div className="student-results">
-          {!catalog.loading &&
-            category === "programs" &&
-            programs.slice(0, shown).map((p) => (
-              <article key={p.id} className="student-card">
-                <InstitutionIdentity
-                  name={p.university?.name || p.university_name || ""}
-                  abbr={p.university?.abbr || p.university_abbr || ""}
-                  domain={p.university?.domain}
-                  location={p.university?.location}
-                />
-                <p className="student-eyebrow">{levels[p.level]} · {fieldLabels[p.field] || p.field}</p>
-                <h3 dir="auto">
-                  <Link
-                    to={`/programs/${p.id}?${new URLSearchParams({ return: "/explore?" + params.toString() })}`}
-                    onClick={() =>
-                      track("search_result_viewed", { program_id: p.id })
-                    }
-                  >
-                    {p.name}
-                  </Link>
-                </h3>
-                <dl className="explorer-facts">
-                  <div>
-                    <dt>مدة الدراسة</dt>
-                    <dd>{studyDuration(p.duration_years)}</dd>
-                  </div>
-                  <div>
-                    <dt>الرسوم السنوية المسجلة</dt>
-                    <dd>
-                      {p.tuition_per_year ? (
-                        <>
-                          <bdi>{p.tuition_per_year.toLocaleString()} MYR</bdi>
-                          <small>تحتاج تأكيدًا</small>
-                        </>
-                      ) : (
-                        "تحتاج تأكيدًا"
-                      )}
-                    </dd>
-                  </div>
-                </dl>
-                <div className="student-actions">
-                  <Link
-                    className="student-button secondary"
-                    to={`/programs/${p.id}?${new URLSearchParams({ return: "/explore?" + params.toString() })}`}
-                  >
-                    عرض التفاصيل
-                  </Link>
-                  <AdvisorLink
-                    context={{
-                      university: p.university?.name,
-                      program: p.name,
-                      level: p.level,
-                    }}
-                  >
-                    استفسر عن هذا التخصص
-                  </AdvisorLink>
-                </div>
-              </article>
-            ))}
-          {!catalog.loading &&
-            category === "universities" &&
-            universities.slice(0, shown).map((u) => (
-              <article className="student-card" key={u.id}>
-                <InstitutionIdentity
-                  name={u.name}
-                  abbr={u.abbr}
-                  domain={u.domain}
-                  location={u.location}
-                />
-                <div className="explorer-tags">
-                  <span>
-                    {u.abbr === 'UTMSPACE' ? 'مسار برامج تابع لـ UTM' : u.type === "public"
-                      ? "جامعة حكومية"
-                      : u.type === "foreign_branch"
-                        ? "فرع جامعة دولية"
-                        : "جامعة خاصة"}
-                  </span>
-                  <span>
-                    {
-                      catalog.programs.filter((p) => p.university_id === u.id)
-                        .length
-                    }{" "}
-                    تخصص في الدليل
-                  </span>
-                </div>
-                <h3 className="university-card-title">اكتشف برامج {u.abbr}</h3>
-                <p className="explorer-card-copy">
-                  تعرف على التخصصات والمدة والرسوم المتاحة، واختر ما يناسب خطتك.
-                </p>
-                <div className="student-actions">
-                  <Link
-                    className="student-button secondary"
-                    to={`/explore?category=programs&university=${u.id}`}
-                  >
-                    تصفح التخصصات
-                  </Link>
-                  <Link to={`/universities/${u.id}`}>عن الجامعة</Link>
-                  <AdvisorLink context={{ university: u.name }} />
-                </div>
-              </article>
-            ))}
-          {!catalog.loading &&
-            category === "institutes" &&
-            institutes.slice(0, shown).map((i) => (
-              <article className="student-card" key={i.id}>
-                <InstitutionIdentity
-                  name={i.name}
-                  abbr={i.abbr}
-                  domain={i.domain}
-                  location={i.location}
-                />
-                <p className="student-eyebrow">معهد لغة</p>
-                <h3 dir="auto">{i.abbr}</h3>
-                <p className="explorer-card-copy" dir="auto">
-                  {i.description}
-                </p>
-                <p>
-                  المدة والرسوم وموعد البداية والسكن: تحتاج تأكيدًا من المستشار.
-                </p>
-                <AdvisorLink
-                  context={{ university: i.name, program: "دراسة اللغة" }}
-                >
-                  استفسر عن هذا المعهد
-                </AdvisorLink>
-              </article>
-            ))}
-        </div>
-        {!catalog.loading && count > shown && (
-          <button
-            className="student-button secondary"
-            onClick={() => update("shown", String(shown + 12))}
-          >
-            {"\u0639\u0631\u0636 \u0627\u0644\u0645\u0632\u064a\u062f"}
-          </button>
-        )}
+  const [allFields, setAllFields] = useState(false);
+  const q = params.get('q') || '', field = params.get('field') || '', level = params.get('level') || '', university = params.get('university') || '', location = params.get('location') || '', sort = params.get('sort') || '';
+  const category = ['universities', 'institutes'].includes(params.get('category') || '') ? params.get('category')! : 'programs';
+  const shown = Math.max(12, Math.min(3000, Number(params.get('shown')) || 12));
+  const update = (key: string, value: string) => setParams(old => {
+    const next = new URLSearchParams(old); next.delete('shown');
+    value ? next.set(key, value) : next.delete(key);
+    if (key === 'field') next.delete('q');
+    if (key === 'university' && field && !catalog.programs.some(p => String(p.university_id) === value && p.field === field)) next.delete('field');
+    return next;
+  }, { replace: true });
+  const universitiesById = useMemo(() => new Map(catalog.universities.map(u => [u.id, u])), [catalog.universities]);
+  const scope = catalog.programs.filter(p => !university || String(p.university_id) === university);
+  const fields = studyFields.map(f => ({ ...f, count: scope.filter(p => p.field === f.key).length })).filter(f => f.count > 0);
+  const selectedField = studyFields.find(f => f.key === field);
+  const results = useMemo(() => catalog.programs.map(p => ({ ...p, score: programSearchScore(q, p, institutionSearchNames(universitiesById.get(p.university_id)?.name || '', universitiesById.get(p.university_id)?.abbr || '')) }))
+    .filter(p => p.score > 0 && (!university || String(p.university_id) === university) && (!field || p.field === field) && (!level || p.level === level) && (!location || universitiesById.get(p.university_id)?.location === location))
+    .sort((a, b) => sort === 'fee' ? (a.tuition_per_year || Infinity) - (b.tuition_per_year || Infinity) || a.name.localeCompare(b.name)
+      : b.score - a.score || ['bachelor','diploma','foundation','master','phd','certificate','postgraduate_diploma','other'].indexOf(a.level) - ['bachelor','diploma','foundation','master','phd','certificate','postgraduate_diploma','other'].indexOf(b.level) || Number(/transfer|bridging/i.test(a.name)) - Number(/transfer|bridging/i.test(b.name)) || a.name.localeCompare(b.name)), [catalog.programs, universitiesById, q, university, field, level, location, sort]);
+  const universities = catalog.universities.filter(u => searchScore(q, institutionSearchNames(u.name, u.abbr)) > 0 && (!location || u.location === location));
+  const institutes = catalog.institutes.filter(i => searchScore(q, institutionSearchNames(i.name, i.abbr)) > 0 && (!location || i.location === location));
+  const count = category === 'programs' ? results.length : category === 'universities' ? universities.length : institutes.length;
+  const suggestions = useMemo(() => {
+    if (!q.trim()) return [];
+    const names = new Set<string>();
+    return [...catalog.universities.map(u => ({ key: `u${u.id}`, name: u.name, caption: `جامعة · ${u.abbr}`, category: 'universities', query: u.abbr, score: searchScore(q, institutionSearchNames(u.name, u.abbr)) })),
+      ...catalog.programs.map(p => ({ key: `p${p.id}`, name: p.name, caption: `تخصص · ${universitiesById.get(p.university_id)?.abbr || ''}`, category: 'programs', query: p.name, score: programSearchScore(q, p) }))]
+      .filter(s => s.score > 0).sort((a,b) => b.score - a.score).filter(s => { if (names.has(s.query)) return false; names.add(s.query); return true; }).slice(0, 6);
+  }, [q, catalog.universities, catalog.programs, universitiesById]);
+  const locations = [...new Set((category === 'institutes' ? catalog.institutes : catalog.universities).map(u => u.location))].sort();
+  const activeCount = [q, field, university, level, location].filter(Boolean).length;
+  const returnTo = '/explore?' + params.toString();
+
+  return <main className="discovery-page" dir="rtl">
+    <section className="discovery-hero">
+      <div><p className="discovery-kicker">اختيارك يبدأ من هنا</p><h1>تخصص تفهمه.<br /><span>وجامعة تناسبك.</span></h1><p>اكتشف المجالات، قارن خيارات الدراسة، واعرف وش ينتظرك قبل ما تقرر.</p>
+      <div className="discovery-metrics"><span><strong>{catalog.loading ? '—' : catalog.universities.length}</strong> جامعة وجهة تعليمية</span><span><strong>{catalog.loading ? '—' : catalog.programs.length.toLocaleString()}</strong> برنامج في الدليل</span><span><strong>{catalog.loading ? '—' : fields.length}</strong> مجالًا دراسيًا</span></div></div>
+      <div className="discovery-route"><span>رحلتك للاختيار</span><div><b>01</b><p>اختَر المجال<small>وش الشيء اللي تحب تتعلّمه؟</small></p></div><div><b>02</b><p>اكتشف التخصص<small>المحتوى، المسارات، المدة والتكلفة</small></p></div><div><b>03</b><p>حدّد جامعتك<small>قارن خياراتك وابدأ طلبك</small></p></div></div>
+    </section>
+    <nav className="discovery-tabs" aria-label="نوع النتائج">{[['programs','اكتشف التخصصات'],['universities','تصفّح الجامعات'],['institutes','معاهد اللغة']].map(([key,title]) => <button key={key} type="button" aria-pressed={category === key} onClick={() => setParams({ category: key }, { replace: true })}>{title}<span>{key === 'programs' ? catalog.programs.length : key === 'universities' ? catalog.universities.length : catalog.institutes.length}</span></button>)}</nav>
+    {category === 'programs' && <section className="discovery-fields" aria-label="اختر مجالك الدراسي">
+      <div className="discovery-section-title"><div><p>ابدأ باهتمامك</p><h2>أي مجال يشدّك؟</h2></div><button className="discovery-text-button" onClick={() => setAllFields(v => !v)}>{allFields ? 'عرض أقل' : 'كل المجالات ←'}</button></div>
+      <div className="field-grid">{(allFields ? fields : fields.filter((f, i) => i < 6 || f.key === field)).map(f => <button key={f.key} type="button" className="field-tile" aria-pressed={field === f.key} style={{ '--field-color': f.color } as React.CSSProperties} onClick={() => update('field', field === f.key ? '' : f.key)}><span className="field-symbol" aria-hidden="true">{f.icon}</span><strong>{f.title}</strong><small>{f.count} برنامج</small><span className="field-tile-arrow" aria-hidden="true">↙</span></button>)}</div>
+      {selectedField && <div className="subject-choices"><strong>قرّب اختيارك:</strong><button type="button" aria-pressed={!q} onClick={() => update('q','')}>كل تخصصات المجال</button>{selectedField.terms.map(term => <button type="button" key={term} aria-pressed={q === term} onClick={() => update('q',term)}>{term}</button>)}</div>}
+    </section>}
+    <form className="discovery-search" onSubmit={e => { e.preventDefault(); document.getElementById('explorer-results')?.focus(); }}><label htmlFor="explorer-query">{category === 'universities' ? 'ابحث عن الجامعة' : 'ابحث باسم التخصص أو الجامعة'}</label><CatalogSearchInput value={q} onChange={value => update('q',value)} suggestions={suggestions} onSelect={item => setParams(old => { const next = new URLSearchParams(old); next.delete('shown'); next.set('category', item.category); const intent = programSearchIntent(item.query); next.set('q', item.category === 'programs' ? intent.text : item.query); if (item.category === 'programs' && intent.level && !next.get('level')) next.set('level', intent.level); return next; }, { replace: true })}/><button className="student-button">ابحث ←</button></form>
+    <div className="discovery-workspace">
+      <aside className="discovery-sidebar"><details open={!isMobile}><summary>خصّص خياراتك {activeCount > 0 && <span>{activeCount}</span>}</summary><div className="discovery-filter-body">
+        {category === 'programs' && <><label>الجامعة<select value={university} onChange={e => update('university',e.target.value)}><option value="">كل الجامعات</option>{catalog.universities.map(u => <option key={u.id} value={u.id}>{u.abbr} · {u.name}</option>)}</select></label>
+        <label>المجال الدراسي<select value={field} onChange={e => update('field',e.target.value)}><option value="">كل المجالات</option>{fields.map(f => <option key={f.key} value={f.key}>{f.title} ({f.count})</option>)}</select></label>
+        <label>المرحلة الدراسية<select value={level} onChange={e => update('level',e.target.value)}><option value="">كل المراحل</option>{Object.entries(levels).map(([key,title]) => <option key={key} value={key}>{title}</option>)}</select></label></>}
+        <label>المدينة<select value={location} onChange={e => update('location',e.target.value)}><option value="">كل المدن</option>{locations.map(city => <option key={city}>{city}</option>)}</select></label>
+        {activeCount > 0 && <button className="discovery-text-button" onClick={() => setParams({ category })}>مسح كل الفلاتر</button>}
+      </div></details><div className="discovery-help"><span>مو متأكد من اختيارك؟</span><p>ابدأ باهتماماتك وميزانيتك، ورتّب خياراتك خطوة بخطوة.</p><Link to="/study-plan">جهّز خطتك الدراسية ←</Link></div></aside>
+      <section id="explorer-results" className="discovery-results" tabIndex={-1} aria-busy={catalog.loading}>
+        <div className="discovery-results-bar"><div><h2>{category === 'universities' ? 'جامعات تفتح لك خيارات' : selectedField ? `تخصصات ${selectedField.title}` : category === 'institutes' ? 'ابدأ من اللغة' : 'اكتشف برنامجك القادم'}</h2><p aria-live="polite">{catalog.loading ? 'جارٍ تحميل الخيارات…' : `${count.toLocaleString()} ${category === 'programs' ? 'برنامج' : 'نتيجة'}${q ? ` · «${q}»` : ''}`}</p></div>{category === 'programs' && <label>ترتيب النتائج<select value={sort} onChange={e => update('sort',e.target.value)}><option value="">الأقرب لاختيارك</option><option value="fee">الرسوم: الأقل أولًا</option></select></label>}</div>
+        {catalog.offline && <p className="student-notice">تعذّر التحديث؛ نعرض الدليل المحفوظ. <button onClick={catalog.retry}>إعادة المحاولة</button></p>}
+        {!catalog.loading && !count && <div className="study-empty"><h3>نوسّع البحث شوي؟</h3><p>جرّب تخصصًا آخر أو أزل أحد الفلاتر للوصول لخيارات أكثر.</p><button className="student-button secondary" onClick={() => setParams({ category })}>عرض كل الخيارات</button></div>}
+        <div className="study-results-grid">{!catalog.loading && category === 'programs' && results.slice(0,shown).map(p => <ProgramCard key={p.id} program={p} university={universitiesById.get(p.university_id)} returnTo={returnTo}/>)}
+        {!catalog.loading && category === 'universities' && universities.slice(0,shown).map(u => <UniversityCard key={u.id} university={u} programs={catalog.programs.filter(p => p.university_id === u.id)}/>)}
+        {!catalog.loading && category === 'institutes' && institutes.slice(0,shown).map(i => <article className="study-program-card" key={i.id}><InstitutionIdentity {...i}/><h3>طوّر لغتك الإنجليزية</h3><p>{i.description}</p><AdvisorLink context={{ university:i.name, program:'دراسة اللغة' }}/></article>)}</div>
+        {!catalog.loading && count > shown && <button className="discovery-load-more" onClick={() => setParams(old => { const next = new URLSearchParams(old); next.set('shown', String(shown+12)); return next; }, { replace:true })}>عرض خيارات أكثر <span>({count-shown} متبقي)</span> ↓</button>}
+        <p className="discovery-data-note">الرسوم والمدد مرجعية للتخطيط. نؤكد التوفر والرسوم النهائية مع الجامعة قبل تقديمك.</p>
       </section>
-      <nav
-        className="student-actions student-utilities"
-        aria-label="أدوات مساعدة"
-      >
-        <Link to="/universities">دليل الجامعات الأصلي</Link>
-        <Link to="/institutes">دليل المعاهد</Link>
-        <Link to="/study-plan">ساعدني أختار</Link>
-        <Link to="/compare">مقارنة الجامعات</Link>
-        <Link to="/costs">حاسبة الميزانية</Link>
-      </nav>
-    </main>
-  );
+    </div>
+  </main>;
 }

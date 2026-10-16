@@ -4,7 +4,7 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: "jsdom",
-    include: ["src/crm/**/*.test.tsx", "src/crm/**/*.test.ts", "src/discovery.test.ts", "src/catalogSearch.test.ts"],
+    include: ["src/crm/**/*.test.tsx", "src/crm/**/*.test.ts", "src/discovery.test.ts", "src/catalogSearch.test.ts", "src/studentJourney.test.tsx"],
     setupFiles: ["./src/crm/test-setup.ts"],
   },
 });

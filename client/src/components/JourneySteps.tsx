@@ -1,8 +1,8 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { usePreferences } from '../i18n';
 
-import { whatsappUrl } from '../discovery';
-const WA = whatsappUrl() || '/apply?intent=consultation';
+
 
 const STEPS = [
   {
@@ -95,30 +95,7 @@ function StepCard({ step, isLast }: { step: typeof STEPS[0]; isLast: boolean }) 
           </div>
         ))}
 
-        <a
-          href={WA}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="step-wa-btn"
-          style={{
-            display: 'none', // controlled by CSS
-            marginTop: 18,
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-            background: '#4F6BFF',
-            color: '#fff',
-            borderRadius: 50,
-            padding: '12px 20px',
-            fontSize: 13,
-            fontWeight: 700,
-            border: 'none',
-            cursor: 'pointer',
-            textDecoration: 'none',
-          }}
-        >
-          {t('journey.bookStep')}
-        </a>
+
       </div>
     </div>
   );
@@ -216,42 +193,13 @@ export default function JourneySteps() {
             ))}
           </div>
 
-          {/* bottom CTAs */}
-          <div className="journey-cta-row" style={{ textAlign: 'center', marginTop: 48, display: 'flex', justifyContent: 'center', gap: 14, flexWrap: 'wrap' }}>
-            <a
-              href={WA}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 10,
-                background: '#4F6BFF', color: '#fff', borderRadius: 16,
-                padding: '15px 34px', fontSize: 15, fontWeight: 700,
-                border: 'none', cursor: 'pointer', letterSpacing: '-0.2px',
-                textDecoration: 'none',
-                boxShadow: '0 10px 26px rgba(79,107,255,0.22)',
-                transition: 'all 0.2s',
-              }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 14px 36px rgba(79,107,255,0.3)'; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'none'; (e.currentTarget as HTMLElement).style.boxShadow = '0 10px 26px rgba(79,107,255,0.22)'; }}
-            >
-              {t('journey.bookWa')}
-            </a>
-            <button
-              onClick={() => window.location.assign('/consultation')}
-              style={{
-                background: '#fff', color: '#111B3D', border: '1.5px solid #E4E4E7',
-                borderRadius: 16, padding: '14px 30px', fontSize: 15, fontWeight: 700,
-                cursor: 'pointer', transition: 'background 0.18s',
-              }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#F4F4F5'; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = '#fff'; }}
-            >
-              {t('journey.bookForm')}
-            </button>
+          <div className="planning-tools" dir="rtl">
+            <Link to="/study-plan" className="student-card planning-tool"><span>01</span><h3>خطتك الدراسية</h3><p>حدد اهتماماتك وخذ خطة تساعدك تختار مسارك.</p><strong>جهّز خطتك ←</strong></Link>
+            <Link to="/costs" className="student-card planning-tool"><span>02</span><h3>حاسبة الميزانية</h3><p>قدّر تكاليف الدراسة والسكن والمعيشة قبل القرار.</p><strong>احسب ميزانيتك ←</strong></Link>
+            <Link to="/compare" className="student-card planning-tool"><span>03</span><h3>مقارنة الجامعات</h3><p>شوف خياراتك جنب بعض وقارن الرسوم ومعلومات الجامعة.</p><strong>قارن خياراتك ←</strong></Link>
           </div>
         </div>
       </section>
     </>
   );
 }
-

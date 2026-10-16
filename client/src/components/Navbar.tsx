@@ -1,17 +1,17 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Logo from './Logo';
+import WhatsAppIcon from './WhatsAppIcon';
 import { C } from '../styles/theme';
 import { usePreferences } from '../i18n';
 
 const links = [
-  { key: 'nav.universities' as const, href: '/explore' },
+  { key: 'nav.universities' as const, href: '/universities' },
   { key: 'nav.institutes' as const,    href: '/institutes'    },
   { key: 'nav.programs' as const,     href: '/programs'     },
   { key: 'nav.studyPlan' as const,    href: '/study-plan'   },
   { key: 'nav.services' as const,     href: '/#services'    },
-  { key: 'nav.visa' as const,         href: '/#faq'         },
-  { key: 'nav.contact' as const,      href: '/consultation'         },
+  { key: 'nav.visa' as const,         href: '/visa'         },
 ];
 
 function scrollToHash(hash: string) {
@@ -68,6 +68,7 @@ export default function Navbar() {
   };
 
   const isCompact = scrolled || pathname !== '/';
+  const showApply = pathname !== '/apply' && pathname !== '/' && !/^\/(universities|programs)\/[^/]+$/.test(pathname);
   const logoTone = 'dark';
   const linkColor = '#52525B';
   const prefButtonStyle = {
@@ -129,12 +130,12 @@ export default function Navbar() {
             </button>
           </div>
 
-          <a className="nav-apply" href="/apply" onClick={e => handleClick(e, '/apply')}
+          {showApply && <a className="nav-apply" href="/apply" onClick={e => handleClick(e, '/apply')}
             style={{ background: 'linear-gradient(135deg, #7B61FF 0%, #4F6BFF 100%)', color: '#fff', borderRadius: 999, padding: '10px 18px', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0, textDecoration: 'none', boxShadow: '0 14px 30px rgba(79,107,255,0.24)', transition: 'transform 0.2s, box-shadow 0.2s', display: 'inline-block' }}
             onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 18px 36px rgba(79,107,255,0.32)'; }}
             onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 14px 30px rgba(79,107,255,0.24)'; }}>
-            {t('nav.apply')}
-          </a>
+            <WhatsAppIcon />{t('nav.apply')}
+          </a>}
 
           <button className="nav-hamburger" aria-expanded={menuOpen} aria-label={menuOpen ? t('nav.closeMenu') : t('nav.openMenu')}
             onClick={() => setMenuOpen(o => !o)}
@@ -169,10 +170,10 @@ export default function Navbar() {
             <button type="button" onClick={toggleLanguage} style={{ ...prefButtonStyle, borderRadius: 12, minHeight: 46, marginBottom: 10, background: '#F4F4F5' }}>
               {t('nav.language')}
             </button>
-            <a href="/apply" onClick={e => handleClick(e, '/apply')}
+            {showApply && <a href="/apply" onClick={e => handleClick(e, '/apply')}
               style={{ display: 'block', textAlign: 'center', background: 'linear-gradient(135deg, #7B61FF 0%, #4F6BFF 100%)', color: '#fff', borderRadius: 12, padding: '14px', fontSize: 15, fontWeight: 700, textDecoration: 'none' }}>
-              {t('nav.apply')}
-            </a>
+              <WhatsAppIcon />{t('nav.apply')}
+            </a>}
           </div>
         </div>
       )}
